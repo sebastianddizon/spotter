@@ -224,16 +224,17 @@ async function exportData() {
 
 /* ---------- theme ---------- */
 const SKINS = [
-  { k: 'auto', name: 'Auto', note: 'Day + night' },
-  { k: 'chalk', name: 'Chalk', note: 'Light' }, { k: 'rubber', name: 'Rubber', note: 'Dark' },
-  { k: 'logbook', name: 'Logbook', note: 'Light' }, { k: 'turf', name: 'Turf', note: 'Dark' }, { k: 'steel', name: 'Steel', note: 'Light' }
+  { k: 'auto', name: 'Auto', note: 'Light by day, dark at night' },
+  { k: 'studio', name: 'Studio', note: 'Clean and premium' }, { k: 'iron', name: 'Iron', note: 'Hardcore gym' },
+  { k: 'blush', name: 'Blush', note: 'Soft and pretty' }, { k: 'gilt', name: 'Gilt', note: 'Black and gold' }
 ];
+const SKIN_OLD = { chalk: 'studio', steel: 'studio', logbook: 'studio', rubber: 'iron', turf: 'iron' };
 const mqDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 function resolvedSkin(t) {
   if (t && t !== 'auto') return t;
   const host = document.documentElement.getAttribute('data-theme');
   const dark = host ? host === 'dark' : !!mqDark?.matches;
-  return dark ? 'rubber' : 'chalk';
+  return dark ? 'studio-dark' : 'studio';
 }
 function applyTheme(t) {
   S.ui.theme = t || 'auto'; try { localStorage.setItem('fc:skin', S.ui.theme); } catch (e) {}
@@ -447,7 +448,7 @@ function captureFs() {
    BOOT
    ============================================================ */
 (async function boot() {
-  let sk = null; try { sk = localStorage.getItem('fc:skin'); } catch (e) {} applyTheme(sk || 'auto');
+  let sk = null; try { sk = localStorage.getItem('fc:skin'); } catch (e) {} applyTheme(SKIN_OLD[sk] || sk || 'auto');
   render();
   await Store.init();
   try {

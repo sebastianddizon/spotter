@@ -1,7 +1,7 @@
 <title>Spotter</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=Barlow+Condensed:wght@500;600;700&family=Big+Shoulders+Display:wght@600;800&family=Courier+Prime:wght@400;700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Saira+Extra+Condensed:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Big+Shoulders+Display:wght@700;800;900&family=Cormorant+Garamond:wght@500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500..700;1,9..144,500..700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Jost:wght@400;500;600&family=Nunito:wght@400;600;700;800&display=swap">
 <style>
 /* Layout: phone-first app shell, bottom tab bar; side rail + two columns on iPad.
    Macro colors follow competition bumper plates: protein red 25 kg, carbs blue 20 kg, fat yellow 15 kg, calories green 10 kg. */
@@ -232,60 +232,76 @@ details.acc > div{padding-bottom:12px}
 .empty{text-align:center;padding:28px 12px;color:var(--ink2)}
 .empty svg{width:34px;height:34px;color:var(--ink3);margin-bottom:6px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
-/* ---------- SKINS: each is its own look (palette, type, surface, shape), applied via data-skin on <html> ----------
-   chalk: chalk-white gym floor, graphite, bumper-plate macros (default light)
-   rubber: speckled rubber gym flooring at night (default dark)
-   logbook: a lifter's graph-paper training log, index cards, red margin rule
-   turf: stadium turf with mowing stripes, chalk lines, flag-yellow actions
-   steel: brushed aluminum, wide grotesk type, precise and quiet */
-:root{ --texture:none; --card-bg:var(--surface); --card-border:var(--line); --card-shadow:var(--shadow); --display-tt:uppercase; --display-ls:.01em; --display-wt:700; --tab-bg:color-mix(in srgb,var(--surface) 88%,transparent); --margin-rule:none }
-:is(:root,.skinp)[data-skin="chalk"]{
-  --bg:#EEF0EC; --surface:#FFFFFF; --surface2:#E4E7E1; --ink:#15181C; --ink2:#59616A; --ink3:#8A9199; --line:#D5D9D1; --steel:#22282F; --chalk:#F7F8F5;
-  --p:#C8243A; --c:#1C5BC9; --f:#D79A07; --k:#1D8F55; --good:#1D8F55; --warn:#C98A06; --bad:#C8243A;
-  --p-soft:#F7DDE1; --c-soft:#DCE6F7; --f-soft:#F6EBCB; --k-soft:#D8EEE2;
-  --shadow:0 1px 2px rgba(20,24,28,.05),0 8px 24px -12px rgba(20,24,28,.18);
-  --display:"Barlow Condensed","Arial Narrow",sans-serif; --body:"IBM Plex Sans",-apple-system,sans-serif; --r:16px; --r-sm:10px;
-  --texture:radial-gradient(rgba(20,24,28,.035) 1px,transparent 1.2px); color-scheme:light }
-:is(:root,.skinp)[data-skin="rubber"]{
-  --bg:#101113; --surface:#191B1E; --surface2:#24272B; --ink:#F1F2EE; --ink2:#A3A9AF; --ink3:#6E757C; --line:#2C3034; --steel:#F1F2EE; --chalk:#101113;
-  --p:#FF5B6E; --c:#5C9BFF; --f:#FFC53D; --k:#3CD38A; --good:#3CD38A; --warn:#FFC53D; --bad:#FF5B6E;
-  --p-soft:#3B1A20; --c-soft:#17284A; --f-soft:#3A2E10; --k-soft:#123322;
-  --shadow:0 1px 0 rgba(255,255,255,.04) inset,0 10px 30px -14px rgba(0,0,0,.8);
-  --display:"Big Shoulders Display","Barlow Condensed",sans-serif; --body:"Figtree",-apple-system,sans-serif; --display-wt:800; --r:18px; --r-sm:11px;
-  --texture:radial-gradient(circle at 20% 30%,rgba(255,91,110,.10) 0 1px,transparent 1.5px),radial-gradient(circle at 70% 60%,rgba(92,155,255,.09) 0 1px,transparent 1.5px),radial-gradient(circle at 45% 80%,rgba(255,197,61,.08) 0 1px,transparent 1.5px),radial-gradient(rgba(255,255,255,.035) 1px,transparent 1.3px);
-  color-scheme:dark }
-:is(:root,.skinp)[data-skin="rubber"]{ --texture-size:37px 41px,53px 47px,61px 59px,5px 5px }
-:is(:root,.skinp)[data-skin="logbook"]{
-  --bg:#F6F8FB; --surface:#FFFFFF; --surface2:#EAF0F7; --ink:#0F2347; --ink2:#4A5D7E; --ink3:#8394B0; --line:#C9D5E6; --steel:#0F2347; --chalk:#FFFFFF;
-  --p:#C62F3B; --c:#1F5FD0; --f:#C98B00; --k:#1C8A5A; --good:#1C8A5A; --warn:#C98B00; --bad:#C62F3B;
-  --p-soft:#F8DEE0; --c-soft:#DDE8FA; --f-soft:#F7ECCB; --k-soft:#D7EFE3;
-  --shadow:none; --display:"Courier Prime","Courier New",monospace; --body:"IBM Plex Sans",-apple-system,sans-serif; --display-tt:none; --display-ls:-.01em; --r:4px; --r-sm:3px;
-  --texture:linear-gradient(rgba(31,95,208,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(31,95,208,.08) 1px,transparent 1px);
-  --margin-rule:inset 3px 0 0 #E7A1A7; color-scheme:light }
-:is(:root,.skinp)[data-skin="logbook"]{ --texture-size:22px 22px,22px 22px }
-:is(:root,.skinp)[data-skin="turf"]{
-  --bg:#0C2219; --surface:#11301F; --surface2:#173C29; --ink:#F4F7F2; --ink2:#B4C7BA; --ink3:#7E978A; --line:#24503A; --steel:#F2D74B; --chalk:#0C2219;
-  --p:#FF6B6B; --c:#6FB6FF; --f:#F2D74B; --k:#9BE15D; --good:#9BE15D; --warn:#F2D74B; --bad:#FF6B6B;
-  --p-soft:#3D2222; --c-soft:#163650; --f-soft:#3A3614; --k-soft:#21401C;
-  --shadow:0 12px 30px -18px rgba(0,0,0,.7); --display:"Saira Extra Condensed","Barlow Condensed",sans-serif; --body:"Figtree",-apple-system,sans-serif; --display-wt:700; --display-ls:.02em; --r:12px; --r-sm:8px;
-  --texture:repeating-linear-gradient(90deg,rgba(255,255,255,.022) 0 56px,transparent 56px 112px); color-scheme:dark }
-:is(:root,.skinp)[data-skin="steel"]{
-  --bg:#E7EAEE; --surface:#F9FAFB; --surface2:#E1E5EA; --ink:#0B0F14; --ink2:#525C68; --ink3:#8A939E; --line:#CDD3DA; --steel:#0B0F14; --chalk:#F9FAFB;
-  --p:#D13447; --c:#2160E0; --f:#C99000; --k:#13865A; --good:#13865A; --warn:#C99000; --bad:#D13447;
-  --p-soft:#F6DDE0; --c-soft:#DCE6FA; --f-soft:#F4EACB; --k-soft:#D5ECE1;
-  --shadow:0 1px 0 #fff inset,0 1px 2px rgba(11,15,20,.06),0 12px 28px -16px rgba(11,15,20,.25);
-  --display:"Archivo","Helvetica Neue",Arial,sans-serif; --body:"Archivo",-apple-system,sans-serif; --display-wt:800; --display-ls:-.01em; --r:20px; --r-sm:12px;
-  --texture:repeating-linear-gradient(0deg,rgba(255,255,255,.35) 0 1px,transparent 1px 3px),linear-gradient(180deg,#EEF1F4,#E2E6EB); color-scheme:light }
-body{background-color:var(--bg);background-image:var(--texture);background-size:var(--texture-size,14px 14px);background-attachment:fixed}
-:root[data-skin="steel"] body{background-size:auto}
-:root[data-skin="turf"] body{background-size:auto}
-.card{background:var(--card-bg);border-color:var(--card-border);box-shadow:var(--card-shadow),var(--margin-rule,0 0 #0000)}
+/* ---------- SKINS: four distinct looks, applied via data-skin on <html> ----------
+   studio / studio-dark: clean premium consumer tech. System type, soft grey canvas, big radii, quiet shadows, one blue accent
+   iron: hardcore gym. Black, blood red, heavy condensed caps, square corners, thick rules, hazard stripe
+   blush: soft and feminine. Rose and lavender, rounded serif headings, pillowy cards, warm glow
+   gilt: luxury. Near-black, champagne gold hairlines, high-contrast serif, spaced small caps */
+:root{ --texture:none; --card-bg:var(--surface); --card-border:var(--line); --card-shadow:var(--shadow); --display-tt:uppercase; --display-ls:.01em; --display-wt:700; --tab-bg:color-mix(in srgb,var(--surface) 88%,transparent); --margin-rule:none; --eyebrow-ls:.08em; --eyebrow-font:var(--body); --bw:1px }
+:is(:root,.skinp)[data-skin="studio"]{
+  --bg:#F5F5F7; --surface:#FFFFFF; --surface2:#EDEDF0; --ink:#1D1D1F; --ink2:#6E6E73; --ink3:#A1A1A6; --line:#E3E3E8; --steel:#0071E3; --chalk:#FFFFFF;
+  --p:#E5304F; --c:#0071E3; --f:#E08600; --k:#25A244; --good:#25A244; --warn:#E08600; --bad:#E5304F;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px -12px rgba(0,0,0,.10); --card-border:transparent;
+  --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter",sans-serif; --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",sans-serif;
+  --display-tt:none; --display-ls:-.025em; --display-wt:700; --r:22px; --r-sm:13px; --eyebrow-ls:.02em;
+  --tab-bg:rgba(255,255,255,.72); color-scheme:light }
+:is(:root,.skinp)[data-skin="studio-dark"]{
+  --bg:#000000; --surface:#1C1C1E; --surface2:#2C2C2E; --ink:#F5F5F7; --ink2:#A1A1A6; --ink3:#6E6E73; --line:#38383A; --steel:#0A84FF; --chalk:#FFFFFF;
+  --p:#FF375F; --c:#0A84FF; --f:#FF9F0A; --k:#30D158; --good:#30D158; --warn:#FF9F0A; --bad:#FF375F;
+  --shadow:none; --card-border:transparent;
+  --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter",sans-serif; --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",sans-serif;
+  --display-tt:none; --display-ls:-.025em; --display-wt:700; --r:22px; --r-sm:13px; --eyebrow-ls:.02em;
+  --tab-bg:rgba(28,28,30,.72); color-scheme:dark }
+:is(:root,.skinp)[data-skin="iron"]{
+  --bg:#070707; --surface:#111111; --surface2:#1C1C1C; --ink:#F4F4F4; --ink2:#A6A6A6; --ink3:#6B6B6B; --line:#2A2A2A; --steel:#E10612; --chalk:#FFFFFF;
+  --p:#FF3B3B; --c:#3D8BFF; --f:#FFC400; --k:#2BD96B; --good:#2BD96B; --warn:#FFC400; --bad:#FF3B3B;
+  --shadow:none; --card-border:#262626; --bw:2px;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif; --body:"Barlow",-apple-system,sans-serif;
+  --display-tt:uppercase; --display-ls:.02em; --display-wt:800; --r:3px; --r-sm:2px; --eyebrow-ls:.18em; --eyebrow-font:"Big Shoulders Display",sans-serif;
+  --texture:repeating-linear-gradient(-45deg,rgba(255,255,255,.018) 0 2px,transparent 2px 14px); --tab-bg:rgba(10,10,10,.92); color-scheme:dark }
+:is(:root,.skinp)[data-skin="blush"]{
+  --bg:#FFF5F6; --surface:#FFFFFF; --surface2:#FCE8EC; --ink:#3B2330; --ink2:#7D5D6B; --ink3:#B596A3; --line:#F5D9DF; --steel:#D9467A; --chalk:#FFFFFF;
+  --p:#E0496E; --c:#7C6CF0; --f:#EFA23A; --k:#35B488; --good:#35B488; --warn:#EFA23A; --bad:#E0496E;
+  --shadow:0 2px 6px rgba(217,70,122,.06),0 16px 36px -18px rgba(217,70,122,.28); --card-border:#F8E3E8;
+  --display:"Fraunces",Georgia,serif; --body:"Nunito",-apple-system,sans-serif;
+  --display-tt:none; --display-ls:-.01em; --display-wt:600; --r:26px; --r-sm:16px; --eyebrow-ls:.06em;
+  --texture:radial-gradient(1200px 600px at 100% -10%,rgba(124,108,240,.10),transparent 60%),radial-gradient(900px 500px at -10% 0%,rgba(224,73,110,.10),transparent 60%);
+  --tab-bg:rgba(255,255,255,.82); color-scheme:light }
+:is(:root,.skinp)[data-skin="gilt"]{
+  --bg:#0A0A0C; --surface:#121215; --surface2:#1B1B20; --ink:#F2ECE0; --ink2:#B8AF9F; --ink3:#7A7366; --line:#3A3224; --steel:#C9A961; --chalk:#0A0A0C;
+  --p:#C65A6C; --c:#7895D2; --f:#C9A961; --k:#5EA98A; --good:#5EA98A; --warn:#C9A961; --bad:#C65A6C;
+  --shadow:none; --card-border:rgba(201,169,97,.28);
+  --display:"Cormorant Garamond",Didot,"Bodoni 72",Georgia,serif; --body:"Jost",-apple-system,sans-serif;
+  --display-tt:none; --display-ls:0; --display-wt:600; --r:6px; --r-sm:4px; --eyebrow-ls:.28em;
+  --texture:linear-gradient(180deg,#0F0F12 0%,#0A0A0C 40%); --tab-bg:rgba(14,14,17,.9); color-scheme:dark }
+body{background-color:var(--bg);background-image:var(--texture);background-size:auto;background-attachment:fixed}
+.card{background:var(--card-bg);border-color:var(--card-border);border-width:var(--bw);box-shadow:var(--card-shadow),var(--margin-rule,0 0 #0000)}
 .card.flat{box-shadow:var(--margin-rule,0 0 #0000)}
 .h-display,.h2,.big,.tile .v,.ex-tag,.stepper input,.set input,.set select,.plate .val,.g-num,.scale button,.brand{font-family:var(--display)}
 .h-display,.h2,.brand{text-transform:var(--display-tt);letter-spacing:var(--display-ls);font-weight:var(--display-wt)}
-:root[data-skin="steel"] .h-display,:root[data-skin="steel"] .brand{font-stretch:125%}
-:root[data-skin="logbook"] .eyebrow{font-family:var(--display);letter-spacing:.04em}
-:root[data-skin="logbook"] .card{border-width:1px 1px 2px}
+.eyebrow{letter-spacing:var(--eyebrow-ls);font-family:var(--eyebrow-font)}
+/* studio: frosted bars, pill buttons */
+:root:is([data-skin="studio"],[data-skin="studio-dark"]) .tabs,:root:is([data-skin="studio"],[data-skin="studio-dark"]) header.top{-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+:root:is([data-skin="studio"],[data-skin="studio-dark"]) .btn{border-radius:999px}
+:root:is([data-skin="studio"],[data-skin="studio-dark"]) .eyebrow{text-transform:none;font-weight:600;font-size:13px}
+/* iron: red rule on cards, hard buttons */
+:root[data-skin="iron"] .card{border-left:4px solid var(--steel)}
+:root[data-skin="iron"] .btn{text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+:root[data-skin="iron"] .btn.primary{box-shadow:4px 4px 0 #000,4px 4px 0 1px var(--steel)}
+:root[data-skin="iron"] .h-display{font-size:1.12em}
+:root[data-skin="iron"] .eyebrow{color:var(--steel);font-weight:700}
+/* blush: soft pills, rose gradient on primary */
+:root[data-skin="blush"] .btn,:root[data-skin="blush"] .chip{border-radius:999px}
+:root[data-skin="blush"] .btn.primary{background:linear-gradient(135deg,#E0496E,#B45AD8);border-color:transparent}
+:root[data-skin="blush"] .h-display{font-style:italic}
+:root[data-skin="blush"] .eyebrow{color:var(--steel)}
+/* gilt: gold hairlines, spaced caps, quiet buttons */
+:root[data-skin="gilt"] .brand{text-transform:uppercase;letter-spacing:.32em;font-weight:500}
+:root[data-skin="gilt"] .eyebrow{color:var(--steel);text-transform:uppercase;font-size:10.5px}
+:root[data-skin="gilt"] .h-display{font-weight:500;letter-spacing:.005em}
+:root[data-skin="gilt"] .btn{text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:500}
+:root[data-skin="gilt"] .btn.primary{background:linear-gradient(180deg,#D9BD7A,#B8954A);color:#0A0A0C;border-color:transparent;box-shadow:0 0 0 1px rgba(201,169,97,.35),0 10px 24px -14px rgba(201,169,97,.6)}
+:root[data-skin="gilt"] .card{box-shadow:inset 0 1px 0 rgba(201,169,97,.12)}
 /* ---------- premium touches ---------- */
 .btn,.chip,.add,.iconbtn,.seg button,.scale button,.set .ok,.tabs button{transition:transform .12s ease,background-color .15s,color .15s,box-shadow .15s}
 .btn:active,.chip:active,.add:active,.iconbtn:active,.set .ok:active{transform:scale(.96)}
