@@ -59,9 +59,9 @@ main{flex:1;padding-block:6px 110px;padding-left:max(16px,env(safe-area-inset-le
 .tabs button[aria-current="page"] svg{stroke-width:2.2}
 @media (min-width:820px){
   .app{flex-direction:row}
-  .tabs{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 32px);width:96px;flex:none;grid-template-columns:1fr;grid-auto-rows:min-content;align-content:center;gap:6px;
-    margin:calc(env(safe-area-inset-top,0px) + 16px) 0 16px max(16px,env(safe-area-inset-left,0px));padding:10px;border:1px solid var(--line);border-radius:28px;background:var(--tab-bg);box-shadow:0 14px 34px -18px rgba(0,0,0,.45);order:-1}
-  .tabs button{padding:12px 0 10px;border-radius:20px;font-size:11.5px}
+  .tabs{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);height:auto;align-self:flex-start;width:88px;flex:none;grid-template-columns:1fr;grid-auto-rows:min-content;gap:4px;
+    margin:calc(env(safe-area-inset-top,0px) + 140px) 0 16px max(16px,env(safe-area-inset-left,0px));padding:10px;border:1px solid var(--line);border-radius:28px;background:var(--tab-bg);box-shadow:0 14px 34px -18px rgba(0,0,0,.45);order:-1}
+  .tabs button{padding:11px 0 9px;border-radius:20px;font-size:11.5px}
   .col{padding-left:8px}
   .col{flex:1;min-width:0;display:flex;flex-direction:column}
   main{padding-bottom:40px}
