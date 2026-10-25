@@ -342,6 +342,7 @@ document.addEventListener('click', async (ev) => {
       if (last) Photos.full(last.id).then(src => { if (S.ui.cam) { S.ui.cam.ghost = src; const v = $('#cam-v'); const st = S.ui.cam.stream; render(); const v2 = $('#cam-v'); if (v2 && st) { v2.srcObject = st; v2.play().catch(() => {}); } } }).catch(() => {});
       break; }
     case 'cam-flip': { const c = S.ui.cam; c.facing = c.facing === 'user' ? 'environment' : 'user'; render(); camStart(); break; }
+    case 'cam-rot': { const c = S.ui.cam, f = c.facing || 'user'; S.ui.camRot = { ...(S.ui.camRot || {}), [f]: (((S.ui.camRot || {})[f] || 0) + 90) % 360 }; try { localStorage.setItem('fc:camRot', JSON.stringify(S.ui.camRot)); } catch (e) {} const v = $('#cam-v'); if (v) v.setAttribute('style', camVideoStyle()); break; }
     case 'cam-shot': { const v = $('#cam-v'); if (v && v.videoWidth) camSave(v); break; }
     case 'scan-rot': { S.ui.scanRot = ((S.ui.scanRot || 0) + 90) % 360; try { localStorage.setItem('fc:scanRot', S.ui.scanRot); } catch (e) {} const v = $('#scan-video'); if (v) v.style.transform = `rotate(${S.ui.scanRot}deg)`; break; }
     case 'travel-open': openSheet({ type: 'travel' }); break;
@@ -521,7 +522,7 @@ function captureFs() {
    BOOT
    ============================================================ */
 (async function boot() {
-  let sk = null; try { sk = localStorage.getItem('fc:skin'); S.ui.scanRot = +(localStorage.getItem('fc:scanRot') || 0); } catch (e) {} applyTheme(SKIN_OLD[sk] || sk || 'auto');
+  let sk = null; try { sk = localStorage.getItem('fc:skin'); S.ui.scanRot = +(localStorage.getItem('fc:scanRot') || 0); S.ui.camRot = JSON.parse(localStorage.getItem('fc:camRot') || '{}'); } catch (e) {} applyTheme(SKIN_OLD[sk] || sk || 'auto');
   render();
   await Store.init();
   try {
