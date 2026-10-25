@@ -1,5 +1,5 @@
 /* Spotter service worker: app opens instantly and offline; food data is cached as it is used. */
-const VER = 'spotter-v11';
+const VER = 'spotter-v12';
 const SHELL = ['./', './index.html', './config.js', './manifest.json', './icons/icon-192.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VER).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VER && k !== 'spotter-food').map(k => caches.delete(k)))).then(() => self.clients.claim())); });

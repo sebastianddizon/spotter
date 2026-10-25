@@ -182,6 +182,26 @@ const EX = [
   { id: 'hm_deadbug', loc: 'home', need: [], name: 'Dead bug', m: 'abs', type: 'iso', tier: 2, rr: [8, 12], inc: 1, bw: true, cue: 'Low back pressed to the floor the whole time.' },
   { id: 'hm_bandcrunch', loc: 'home', need: ['bands'], name: 'Kneeling band crunch', m: 'abs', type: 'iso', tier: 2, rr: [12, 20], inc: 1, cue: 'Band anchored high, curl your ribs to your hips.' },
 
+  // ---------------- CALISTHENICS (home; bodyweight moves with bars, rings and parallettes) ----------------
+  { id: 'hm_paralpu', loc: 'home', need: ['parallettes'], name: 'Deep push-up on parallettes', m: 'chest', sec: ['triceps', 'frontdelts'], type: 'compound', tier: 1, stretch: true, rr: [8, 20], inc: 1, bw: true, cue: 'Hands on the bars, lower your chest below your hands.' },
+  { id: 'hm_ringpu', loc: 'home', need: ['rings'], name: 'Ring push-up', m: 'chest', sec: ['triceps', 'frontdelts'], type: 'compound', tier: 1, stretch: true, rr: [8, 15], inc: 1, bw: true, cue: 'Rings a few inches off the floor. Turn your hands out at the top.' },
+  { id: 'hm_archer', loc: 'home', need: [], name: 'Archer push-up', m: 'chest', sec: ['triceps'], type: 'compound', tier: 2, rr: [5, 10], inc: 1, bw: true, cue: 'Wide hands, shift your weight to one side each rep. Per side.' },
+  { id: 'hm_dip', loc: 'home', need: ['dip'], name: 'Dip', m: 'chest', sec: ['triceps', 'frontdelts'], type: 'compound', tier: 1, stretch: true, rr: [6, 12], inc: 1, bw: true, cue: 'Lean forward a little, go down until your shoulders are below your elbows.' },
+  { id: 'hm_ringdip', loc: 'home', need: ['rings'], name: 'Ring dip', m: 'triceps', sec: ['chest'], type: 'compound', tier: 2, stretch: true, rr: [5, 10], inc: 1, bw: true, cue: 'Keep the rings close to your body. Use feet on the floor for help.' },
+  { id: 'hm_ringrow', loc: 'home', need: ['rings'], name: 'Ring row', m: 'upperback', sec: ['lats', 'biceps'], type: 'compound', tier: 1, stretch: true, rr: [8, 15], inc: 1, bw: true, cue: 'Walk your feet forward to make it harder.' },
+  { id: 'hm_chin', loc: 'home', need: ['bar'], name: 'Chin-up (palms toward you)', m: 'lats', sec: ['biceps'], type: 'compound', tier: 1, stretch: true, rr: [5, 12], inc: 1, bw: true, cue: 'Full hang at the bottom, chin over the bar.' },
+  { id: 'hm_negpull', loc: 'home', need: ['bar'], name: 'Slow lowering pull-up', m: 'lats', sec: ['biceps', 'upperback'], type: 'compound', tier: 2, stretch: true, rr: [3, 6], inc: 1, bw: true, cue: 'Jump or step to the top, then lower for 5 seconds. Great if you cannot do a pull-up yet.' },
+  { id: 'hm_hangleg', loc: 'home', need: ['bar'], name: 'Hanging leg raise', m: 'abs', type: 'iso', tier: 1, rr: [6, 15], inc: 1, bw: true, cue: 'Legs as straight as you can, no swinging.' },
+  { id: 'hm_lsit', loc: 'home', need: ['parallettes'], name: 'L-sit hold (seconds)', m: 'abs', type: 'iso', tier: 2, rr: [10, 30], inc: 1, bw: true, cue: 'Count seconds as reps. Bend your knees to make it easier.' },
+  { id: 'hm_parpike', loc: 'home', need: ['parallettes'], name: 'Pike push-up on parallettes', m: 'frontdelts', sec: ['triceps', 'sidedelts'], type: 'compound', tier: 1, stretch: true, rr: [6, 12], inc: 1, bw: true, cue: 'Hips high, lower your head between the bars.' },
+  { id: 'hm_hspu', loc: 'home', need: [], name: 'Wall handstand push-up', m: 'frontdelts', sec: ['triceps', 'sidedelts'], type: 'compound', tier: 3, rr: [3, 8], inc: 1, bw: true, cue: 'Advanced. Kick up against a wall, lower your head to a pillow.' },
+  { id: 'hm_ringface', loc: 'home', need: ['rings'], name: 'Ring face pull', m: 'reardelts', sec: ['upperback'], type: 'iso', tier: 1, rr: [10, 20], inc: 1, bw: true, prehab: true, cue: 'Lean back, pull the rings to your forehead, elbows high.' },
+  { id: 'hm_ringcurl', loc: 'home', need: ['rings'], name: 'Ring curl', m: 'biceps', type: 'iso', tier: 2, rr: [8, 15], inc: 1, bw: true, cue: 'Lean back, curl your body up to your hands.' },
+  { id: 'hm_ringext', loc: 'home', need: ['rings'], name: 'Ring triceps extension', m: 'triceps', type: 'iso', tier: 1, stretch: true, rr: [8, 15], inc: 1, bw: true, cue: 'Lean forward, bend at the elbows, push back out.' },
+  { id: 'hm_benchdip', loc: 'home', need: ['bench'], name: 'Bench dip', m: 'triceps', type: 'compound', tier: 3, rr: [10, 20], inc: 1, bw: true, cue: 'Hands on the bench behind you, elbows point back.' },
+  { id: 'hm_pistol', loc: 'home', need: [], name: 'Assisted pistol squat', m: 'quads', sec: ['glutes'], type: 'compound', tier: 2, stretch: true, rr: [5, 10], inc: 1, bw: true, cue: 'Hold a doorframe, sit down on one leg. Per leg.' },
+  { id: 'hm_nordic', loc: 'home', need: [], name: 'Nordic curl', m: 'hams', type: 'iso', tier: 1, rr: [3, 8], inc: 1, bw: true, cue: 'Feet hooked under a couch, lower your body forward slowly. Catch yourself with your hands.' },
+
   // ---------------- SPEEDIANCE GYM MONSTER (2 adjustable arms, bar, handles, ankle straps, belt; bench optional; 1 lb steps, up to 220 lb) ----------------
   { id: 'sd_bench', loc: 'sd', need: ['bench'], name: 'Bench press (bar, arms low)', m: 'chest', sec: ['triceps', 'frontdelts'], type: 'compound', tier: 1, rr: [6, 10], inc: 5, mode: 'Standard', cue: 'Bench between the arms, bar over your chest.' },
   { id: 'sd_incline', loc: 'sd', need: ['bench'], name: 'Incline press (handles, arms low)', m: 'chest', sec: ['frontdelts', 'triceps'], type: 'compound', tier: 1, stretch: true, rr: [8, 12], inc: 5, mode: 'Eccentric', cue: 'Bench at a slight incline, deep stretch at the bottom.' },
@@ -304,7 +324,7 @@ const PLACES = {
 };
 const HOME_EQUIP = [
   { k: 'db', t: 'Dumbbells' }, { k: 'kb', t: 'Kettlebells' }, { k: 'bands', t: 'Resistance bands' }, { k: 'bar', t: 'Pull-up bar' },
-  { k: 'bench', t: 'Bench' }, { k: 'bb', t: 'Barbell and rack' }
+  { k: 'bench', t: 'Bench' }, { k: 'bb', t: 'Barbell and rack' }, { k: 'rings', t: 'Gymnastic rings' }, { k: 'parallettes', t: 'Parallettes or handstand bars' }, { k: 'dip', t: 'Dip bars' }
 ];
 function placeOf(loc) { return PLACES[loc] || PLACES.gym; }
 function unitOf(loc) { return placeOf(loc).unit; }
@@ -817,6 +837,7 @@ function loadFor(e1, reps, rir) { return e1 / (1 + (reps + rir) / 30); }
  * Units: gym = lb total; p1 = kg dial per cable.
  */
 function suggestLoad(ex, history, repTarget, rirTarget, mod = {}) {
+  if (ex.bw && (!history || !history.length || !history.some(s => +s.load > 0))) return { load: null, basis: `Bodyweight. When you hit ${ex.rr[1]} reps on every set, make it harder: go slower, go deeper, or add weight.` };
   if (!history || !history.length) return { load: null, basis: 'First time: pick a weight you could lift about ' + (repTarget + rirTarget + 2) + ' times, and log what you do. Next time Spotter picks the weight for you.' };
   const byDate = {};
   history.forEach(s => { (byDate[s.date] = byDate[s.date] || []).push(s); });
@@ -885,7 +906,7 @@ function lastSessionInfo(workouts, today) {
 }
 
 function nextDayIndex(program, workouts, today) {
-  const last = lastSessionInfo(workouts, today);
+  const last = lastSessionInfo(workouts.filter(w => !w.free), today);
   if (!last || last.dayIndex == null) return 0;
   return (last.dayIndex + 1) % program.days.length;
 }

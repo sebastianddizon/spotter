@@ -119,8 +119,8 @@ function renderOnboarding() {
     <div class="eyebrow" style="margin-top:-6px">Gym</div>
     ${chipsMulti('locations', [{ v: 'gym', t: 'Commercial gym' }], a.locations)}
     <div class="eyebrow" style="margin-top:6px">Home gym</div>
-    ${chipsMulti('locations', [{ v: 'home', t: 'Free weights or bodyweight' }], a.locations)}
-    ${a.locations.includes('home') ? `<div class="help" style="margin-top:2px">What do you have at home? Leave all off for bodyweight only.</div>${chipsMulti('homeEquip', E.HOME_EQUIP.map(x => ({ v: x.k, t: x.t })), a.homeEquip || [])}` : ''}
+    ${chipsMulti('locations', [{ v: 'home', t: 'Free weights, calisthenics or bodyweight' }], a.locations)}
+    ${a.locations.includes('home') ? `<div class="help" style="margin-top:2px">What do you have at home? For calisthenics, pick a pull-up bar, rings, parallettes or dip bars. Leave all off for bodyweight only.</div>${chipsMulti('homeEquip', E.HOME_EQUIP.map(x => ({ v: x.k, t: x.t })), a.homeEquip || [])}` : ''}
     <div class="help" style="margin-top:4px">Smart home gyms</div>
     ${chipsMulti('locations', ['p1', 'sd', 'tonal', 'amp', 'vit'].map(k => ({ v: k, t: E.PLACES[k].full })), a.locations)}
     ${a.locations.includes('p1') ? `<div class="fields"><label class="f">P1 dial step (kg)${inp('p1inc', a.p1inc)}</label><label class="f">P1 max per cable (kg)${inp('p1max', a.p1max)}</label></div>` : ''}

@@ -136,6 +136,9 @@ function migrateProfile(p) {
   if (p.program && p.program['og' + 'us'] != null) { p.program.strength = p.program['og' + 'us']; delete p.program['og' + 'us']; }
   return p;
 }
+function syncMyEx() {
+  (S.lib?.myex || []).forEach(x => { if (E.EXBYID[x.id]) return; const e = { id: x.id, loc: 'mine', name: x.name, m: x.m, type: 'compound', tier: 2, rr: [8, 12], inc: x.bw ? 1 : 5, bw: !!x.bw, cue: '' }; E.EX.push(e); E.EXBYID[x.id] = e; });
+}
 function day(date) {
   if (!S.days[date]) S.days[date] = { date, food: [], workouts: [], checkin: null, weight: null };
   const d = S.days[date]; d.food = d.food || []; d.workouts = d.workouts || [];

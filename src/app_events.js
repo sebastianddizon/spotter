@@ -6,6 +6,7 @@ const TABS = [['today', 'Today'], ['train', 'Train'], ['food', 'Food'], ['progre
 function render() {
   const root = $('#root');
   if (!Store.ready) { root.innerHTML = `<div class="empty" style="padding-top:30vh"><span class="spinner"></span></div>`; return; }
+  syncMyEx();
   const keepScroll = window.scrollY;
   const active = document.activeElement; const activeId = active?.id; const selStart = active?.selectionStart;
   let mainHtml;
@@ -335,15 +336,17 @@ document.addEventListener('click', async (ev) => {
     case 'swap-open': openSheet({ type: 'swap', i: +el.dataset.i }); break;
     case 'swap-do': {
       const w = activeWorkout(), it = w.items[+el.dataset.i], ex = E.EXBYID[v];
+      it.loc = ex.loc === 'mine' ? it.loc : ex.loc;
       const sug = E.suggestLoad(ex, setsHistory()[ex.id], typeof it.repTarget === 'number' ? it.repTarget : ex.rr[0] + 2, it.rir, {});
       Object.assign(it, { exId: ex.id, name: ex.name, cue: ex.cue, reps: `${ex.rr[0]}-${ex.rr[1]}`, target: sug.load, basis: sug.basis });
       it.sets.forEach(s => { if (!s.done) s.load = sug.load; });
-      if (el.dataset.keep && it.slotKey) { S.profile.swaps = S.profile.swaps || {}; S.profile.swaps[it.slotKey + '@' + it.loc] = ex.id; saveProfile(); }
+      if (el.dataset.keep && it.slotKey) { S.profile.swaps = S.profile.swaps || {}; S.profile.swaps[it.slotKey + '@' + w.location] = ex.id; saveProfile(); }
       saveDay(today()); closeSheet(); break;
     }
     case 'avoid-ex': { const it = activeWorkout().items[+el.dataset.i]; S.profile.avoid = [...new Set([...(S.profile.avoid || []), it.exId])]; saveProfile(); toast(`${it.name} removed from future plans`); closeSheet(); break; }
     case 'add-exercise': openSheet({ type: 'addex' }); break;
-    case 'add-ex-do': { const ex = E.EXBYID[v], w = activeWorkout(); const sug = E.suggestLoad(ex, setsHistory()[ex.id], ex.rr[0] + 2, ex.type === 'compound' ? 2 : 1, {}); w.items.push({ exId: ex.id, name: ex.name, muscle: ex.m, loc: ex.loc, reps: `${ex.rr[0]}-${ex.rr[1]}`, repTarget: ex.rr[0] + 2, rir: ex.type === 'compound' ? 2 : 1, target: sug.load, basis: sug.basis, cue: ex.cue, rest: ex.type === 'compound' ? 150 : 90, sets: [0, 1, 2].map(() => ({ load: sug.load, reps: null, rir: null, done: false })) }); saveDay(today()); closeSheet(); break; }
+    case 'free-start': { const t = today(), d = day(t); if ((d.workouts || []).some(w => !w.done)) { S.view = 'train'; render(); break; } const loc = d.plan?.loc && d.plan.loc !== 'off' ? d.plan.loc : (S.profile.locations || ['gym'])[0]; d.workouts.push({ id: uid(), free: true, dayName: 'My workout', location: loc, startedAt: Date.now(), done: false, notes: [], items: [] }); saveDay(t); S.view = 'train'; openSheet({ type: 'addex' }); break; }
+    case 'add-ex-do': { const ex = E.EXBYID[v], w = activeWorkout(); const sug = E.suggestLoad(ex, setsHistory()[ex.id], ex.rr[0] + 2, ex.type === 'compound' ? 2 : 1, {}); w.items.push({ exId: ex.id, name: ex.name, muscle: ex.m, loc: ex.loc === 'mine' ? w.location : ex.loc, reps: `${ex.rr[0]}-${ex.rr[1]}`, repTarget: ex.rr[0] + 2, rir: ex.type === 'compound' ? 2 : 1, target: sug.load, basis: sug.basis, cue: ex.cue, rest: ex.type === 'compound' ? 150 : 90, sets: [0, 1, 2].map(() => ({ load: sug.load, reps: null, rir: null, done: false })) }); saveDay(today()); closeSheet(); break; }
     case 'rest-add': if (S.rest) S.rest.end += 30000; break;
     case 'rest-skip': S.rest = null; clearInterval(restInt); render(); break;
     // food
@@ -420,6 +423,16 @@ document.addEventListener('submit', (ev) => {
   if (fm === 'chat') { const i = $('#chat-in'); const t = i.value; i.value = ''; sendChat(t); }
   if (fm === 'log') { const i = ev.target.querySelector('textarea,input'); const t = i.value; i.value = ''; startLog(t); }
   if (fm === 'recipe') { startRecipe($('#rc-name').value, $('#rc-text').value, $('#rc-serv').value, $('#rc-grams').value, $('#rc-sname').value || 'serving'); }
+  if (fm === 'myex') {
+    const name = $('#mx-name').value.trim(); if (!name) return;
+    const m = $('#mx-m').value, bw = $('#mx-bw').checked;
+    const id = 'my_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 40);
+    S.lib.myex = (S.lib.myex || []).filter(x => x.id !== id); S.lib.myex.push({ id, name, m, bw }); saveLib(); syncMyEx();
+    const w = activeWorkout(); if (!w) return;
+    if (ev.target.dataset.mode === 'swap') { const it = w.items[+ev.target.dataset.i]; const sug = E.suggestLoad(E.EXBYID[id], setsHistory()[id], typeof it.repTarget === 'number' ? it.repTarget : 10, it.rir, {}); Object.assign(it, { exId: id, name, muscle: m, cue: '', reps: '8-12', target: sug.load, basis: sug.basis }); it.sets.forEach(s => { if (!s.done) s.load = sug.load; }); }
+    else { const ex = E.EXBYID[id]; const sug = E.suggestLoad(ex, setsHistory()[id], 10, 2, {}); w.items.push({ exId: id, name, muscle: m, loc: w.location, reps: '8-12', repTarget: 10, rir: 2, target: sug.load, basis: sug.basis, cue: '', rest: 120, sets: [0, 1, 2].map(() => ({ load: sug.load, reps: null, rir: null, done: false })) }); }
+    saveDay(today()); closeSheet(); toast(`${name} added`); return;
+  }
   if (fm === 'mealsave') { S.ui.mealName = $('#ms-name').value; saveMealFromDay(ev.target.dataset.v); S.ui.mealSave = null; render(); }
   if (fm === 'search') { const q = $('#sr-q').value.trim(); const s = S.sheet.search; s.q = q; s.busy = true; s.err = null; render(); FoodDB.search(q, '', 25).then(r => { s.rows = r; }).catch(() => { s.err = 'The food database did not load. Check your connection.'; }).finally(() => { s.busy = false; render(); }); }
 });

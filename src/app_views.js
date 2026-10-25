@@ -73,7 +73,7 @@ function viewToday() {
     const minSeg = `<div class="chips">${[30, 45, 60, 75].map(m => `<button class="chip" data-act="plan-min" data-v="${m}" aria-pressed="${+min === m}">${m} min</button>`).join('')}</div>`;
     let inner = '';
     if (plan.type === 'train') {
-      inner = `<div class="list" style="margin-top:6px">${plan.items.map((it, i) => `<div class="row between" style="padding:8px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${it.pair ? `<span class="pill blue" style="margin-right:6px">${it.pair}</span>` : ''}${esc(it.ex.name)}</div><div class="tiny muted">${E.MUSCLES[it.muscle]}</div></div><div class="num" style="text-align:right;white-space:nowrap;font-family:var(--display);font-weight:600;font-size:16px">${it.sets} × ${it.reps}<div class="tiny muted" style="font-family:var(--body);font-weight:400">${it.load != null ? (it.ex.loc === 'p1' ? 'dial ' + it.load + ' kg' : it.load + ' lb') : 'pick a weight'}</div></div></div>`).join('')}</div>
+      inner = `<div class="list" style="margin-top:6px">${plan.items.map((it, i) => `<div class="row between" style="padding:8px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${it.pair ? `<span class="pill blue" style="margin-right:6px">${it.pair}</span>` : ''}${esc(it.ex.name)}</div><div class="tiny muted">${E.MUSCLES[it.muscle]}</div></div><div class="num" style="text-align:right;white-space:nowrap;font-family:var(--display);font-weight:600;font-size:16px">${it.sets} × ${it.reps}<div class="tiny muted" style="font-family:var(--body);font-weight:400">${it.load != null ? (it.ex.loc === 'p1' ? 'dial ' + it.load + ' kg' : it.load + ' ' + E.unitOf(it.ex.loc)) : it.ex.bw ? 'bodyweight' : 'pick a weight'}</div></div></div>`).join('')}</div>
         <div class="row" style="margin-top:12px">${started ? `<button class="btn primary block" data-act="go" data-v="train">${ICON.train} Continue session</button>` : `<button class="btn primary block" data-act="start-session">${ICON.train} Start ${esc(plan.dayName)}</button>`}</div>
         ${plan.readiness.band === 'red' ? `<button class="btn block ghost" style="margin-top:8px" data-act="plan-choice" data-v="walk">${ICON.walk} Swap for a recovery walk</button>` : ''}`;
     } else if (plan.type === 'recovery') {
@@ -144,7 +144,8 @@ function viewTrain() {
     const plan = todaysPlan();
     body = `<div class="card"><div class="eyebrow">Nothing in progress</div><div class="h2" style="margin-top:2px">${plan.type === 'train' ? 'Next up: ' + esc(plan.dayName) : 'Rest or recovery today'}</div>
       <p class="small muted" style="margin-top:4px">${plan.type === 'train' ? `${plan.items.length} exercises, about ${plan.minutesEst} minutes at ${LOC_LABEL[plan.location]}.` : 'You can still start a session if plans changed.'}</p>
-      <div class="row" style="margin-top:12px"><button class="btn primary" data-act="start-session">${ICON.train} Start session</button><button class="btn" data-act="go" data-v="today">Change location or time</button></div></div>`;
+      <div class="row" style="margin-top:12px"><button class="btn primary" data-act="start-session">${ICON.train} Start session</button><button class="btn" data-act="go" data-v="today">Change location or time</button></div>
+      <div class="divider"></div><p class="small muted">Did your own thing? Log the exercises you actually did. It still counts toward your progress.</p><button class="btn block" style="margin-top:8px" data-act="free-start">${ICON.plus} Log my own workout</button></div>`;
   }
   const histHtml = hist.length ? `<div class="card"><div class="card-h"><div class="eyebrow">Recent sessions</div></div><div class="list">${hist.map(w => {
     const sets = (w.items || []).reduce((s, it) => s + it.sets.filter(x => x.done).length, 0);
@@ -181,7 +182,7 @@ function exerciseBlock(w, it, i) {
       ${it.main ? '' : `<button class="iconbtn" data-act="swap-open" data-i="${i}" aria-label="Swap exercise">${ICON.swap}</button>`}
     </div>
     <div class="sets">
-      <div class="set set-h"><span>Set</span><span>${it.loc === 'p1' ? 'Dial kg' : unit}</span><span>Reps</span><span>Reps left</span><span></span></div>
+      <div class="set set-h"><span>Set</span><span>${it.loc === 'p1' ? 'Dial kg' : ex.bw ? '+' + unit : unit}</span><span>Reps</span><span>Reps left</span><span></span></div>
       ${it.sets.map((s, j) => `<div class="set ${s.done ? 'done' : ''}">
         <span class="n">${j + 1}</span>
         <input id="s-${i}-${j}-l" data-set="load" data-i="${i}" data-j="${j}" inputmode="decimal" value="${s.load ?? ''}" placeholder="${it.target ?? '–'}" aria-label="Load set ${j + 1}">
@@ -196,20 +197,33 @@ function exerciseBlock(w, it, i) {
 
 function sheetSwap(i) {
   const w = day(today()).workouts.find(x => !x.done); const it = w.items[i];
-  const alts = E.EX.filter(e => e.loc === it.loc && !e.mainOnly && haveEquip(e) && (e.m === it.muscle || (e.sec || []).includes(it.muscle)) && e.id !== it.exId)
-    .sort((a, b) => (a.m === it.muscle ? 0 : 1) - (b.m === it.muscle ? 0 : 1) || a.tier - b.tier);
+  const fits = e => !e.mainOnly && haveEquip(e) && (e.m === it.muscle || (e.sec || []).includes(it.muscle)) && e.id !== it.exId;
+  const srt = (a, b) => (a.m === it.muscle ? 0 : 1) - (b.m === it.muscle ? 0 : 1) || a.tier - b.tier;
+  const mine = new Set([w.location, ...(S.profile.locations || [])]);
+  const alts = E.EX.filter(e => e.loc === w.location && fits(e)).sort(srt);
+  const other = E.EX.filter(e => e.loc !== w.location && (mine.has(e.loc) || e.loc === 'mine') && fits(e)).sort(srt);
   return `<div class="grab"></div><div class="stack"><div><div class="eyebrow">Swap</div><div class="h2">${esc(it.name)}</div><p class="small muted">Pick a replacement for ${E.MUSCLES[it.muscle]}. "Keep" makes it the default for this slot from now on.</p></div>
     <div class="list">${alts.map(e => `<div class="row between" style="padding:10px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${esc(e.name)} ${e.tier === 1 ? '<span class="pill good">Best pick</span>' : ''}</div><div class="tiny muted">${esc(e.cue)}</div></div><div class="row" style="flex-wrap:nowrap;gap:6px"><button class="btn sm" data-act="swap-do" data-i="${i}" data-v="${e.id}">Today</button><button class="btn sm primary" data-act="swap-do" data-i="${i}" data-v="${e.id}" data-keep="1">Keep</button></div></div>`).join('') || '<p class="muted">No alternatives at this location.</p>'}</div>
+    ${other.length ? `<details class="acc"><summary>With other equipment you have ${ICON.chev.replace('<svg', '<svg width="16" height="16"')}</summary><div class="list">${other.map(e => `<div class="row between" style="padding:10px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${esc(e.name)}</div><div class="tiny muted">${esc(e.loc === 'mine' ? 'Your exercise' : E.placeOf(e.loc).full)}</div></div><div class="row" style="flex-wrap:nowrap;gap:6px"><button class="btn sm" data-act="swap-do" data-i="${i}" data-v="${e.id}">Today</button><button class="btn sm primary" data-act="swap-do" data-i="${i}" data-v="${e.id}" data-keep="1">Keep</button></div></div>`).join('')}</div></details>` : ''}
+    ${myExForm('swap', i, it.muscle)}
     <button class="btn ghost danger" data-act="avoid-ex" data-i="${i}">Never program ${esc(it.name)}</button></div>`;
 }
 
+function myExForm(mode, i, muscle) {
+  return `<form class="card flat stack" data-form="myex" data-mode="${mode}" data-i="${i ?? ''}" style="padding:12px"><b class="small">Something else</b>
+    <input class="inp" id="mx-name" placeholder="Type the exercise, e.g. kettlebell goblet squat" autocomplete="off">
+    <div class="row" style="flex-wrap:nowrap;gap:8px"><select class="inp" id="mx-m" aria-label="Body part">${Object.entries(E.MUSCLES).map(([k, l]) => `<option value="${k}" ${k === muscle ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <label class="chip" style="white-space:nowrap"><input type="checkbox" id="mx-bw" style="margin-right:6px">Bodyweight</label></div>
+    <button class="btn sm primary" type="submit">${mode === 'swap' ? 'Use this instead' : 'Add it'}</button></form>`;
+}
 function sheetAddExercise() {
   const w = day(today()).workouts.find(x => !x.done);
-  const list = E.EX.filter(e => e.loc === w.location && !e.mainOnly && haveEquip(e));
+  const mine = new Set([w.location, ...(S.profile.locations || []), 'mine']);
+  const list = E.EX.filter(e => (w.free ? mine.has(e.loc) : (e.loc === w.location || e.loc === 'mine')) && !e.mainOnly && haveEquip(e));
   return `<div class="grab"></div><div class="stack"><div class="h2">Add exercise</div><div class="list">${Object.keys(E.MUSCLES).map(m => {
     const xs = list.filter(e => e.m === m); if (!xs.length) return '';
     return `<details class="acc"><summary>${E.MUSCLES[m]} ${ICON.chev.replace('<svg', '<svg width="16" height="16"')}</summary><div>${xs.map(e => `<button class="btn sm" style="margin:3px" data-act="add-ex-do" data-v="${e.id}">${esc(e.name)}</button>`).join('')}</div></details>`;
-  }).join('')}</div></div>`;
+  }).join('')}</div>${myExForm('add', null, 'chest')}</div>`;
 }
 
 /* ---------------- FOOD ---------------- */
