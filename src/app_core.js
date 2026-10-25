@@ -141,6 +141,13 @@ function migrateProfile(p) {
   if (p.program && p.program['og' + 'us'] != null) { p.program.strength = p.program['og' + 'us']; delete p.program['og' + 'us']; }
   return p;
 }
+/* Digital cable machines are set in kg per cable. Everything shown outside the set logger uses total pounds. */
+function toLb(exId, loc, load) {
+  if (load == null || load === '' || isNaN(+load)) return null;
+  const pl = E.placeOf(loc || E.EXBYID[exId]?.loc);
+  if (!pl.perCable) return +load;
+  return Math.round(+load * (E.EXBYID[exId]?.cables || 2) * 2.20462);
+}
 function syncMyEx() {
   (S.lib?.myex || []).forEach(x => { if (E.EXBYID[x.id]) return; const e = { id: x.id, loc: 'mine', name: x.name, m: x.m, type: 'compound', tier: 2, rr: [8, 12], inc: x.bw ? 1 : 5, bw: !!x.bw, cue: '' }; E.EX.push(e); E.EXBYID[x.id] = e; });
 }
@@ -171,7 +178,7 @@ function allWorkouts() {
 function setsHistory() {
   const h = {};
   allWorkouts().filter(w => w.done).forEach(w => (w.items || []).forEach(it => (it.sets || []).filter(s => s.done && s.reps && (s.load != null || E.EXBYID[it.exId]?.bw)).forEach(s => {
-    (h[it.exId] = h[it.exId] || []).push({ date: w.date, load: +(s.load || 0), reps: +s.reps, rir: s.rir == null ? 2 : +s.rir });
+    (h[it.exId] = h[it.exId] || []).push({ date: w.date, load: +(s.load || 0), lb: toLb(it.exId, it.loc, +(s.load || 0)), reps: +s.reps, rir: s.rir == null ? 2 : +s.rir });
   })));
   return h;
 }

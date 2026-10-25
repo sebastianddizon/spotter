@@ -178,6 +178,8 @@ textarea.inp{min-height:76px;resize:vertical}
 .set{display:grid;grid-template-columns:26px minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr) 44px;gap:6px;align-items:center}
 .set .n{font-family:var(--display);font-weight:600;color:var(--ink3);text-align:center}
 .set input,.set select{width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:8px 6px;text-align:center;font-size:16px;font-family:var(--display);font-weight:600}
+.set .ld{display:flex;flex-direction:column;gap:1px;min-width:0}
+.set .ld small{font-size:10.5px;line-height:1;color:var(--ink3);text-align:center;font-variant-numeric:tabular-nums;min-height:11px}
 .set .ok{height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
 .set .ok svg{width:18px;height:18px}
 .set.done .ok{background:var(--good);border-color:var(--good);color:#fff}
@@ -1764,6 +1766,13 @@ function migrateProfile(p) {
   if (p.program && p.program['og' + 'us'] != null) { p.program.strength = p.program['og' + 'us']; delete p.program['og' + 'us']; }
   return p;
 }
+/* Digital cable machines are set in kg per cable. Everything shown outside the set logger uses total pounds. */
+function toLb(exId, loc, load) {
+  if (load == null || load === '' || isNaN(+load)) return null;
+  const pl = E.placeOf(loc || E.EXBYID[exId]?.loc);
+  if (!pl.perCable) return +load;
+  return Math.round(+load * (E.EXBYID[exId]?.cables || 2) * 2.20462);
+}
 function syncMyEx() {
   (S.lib?.myex || []).forEach(x => { if (E.EXBYID[x.id]) return; const e = { id: x.id, loc: 'mine', name: x.name, m: x.m, type: 'compound', tier: 2, rr: [8, 12], inc: x.bw ? 1 : 5, bw: !!x.bw, cue: '' }; E.EX.push(e); E.EXBYID[x.id] = e; });
 }
@@ -1794,7 +1803,7 @@ function allWorkouts() {
 function setsHistory() {
   const h = {};
   allWorkouts().filter(w => w.done).forEach(w => (w.items || []).forEach(it => (it.sets || []).filter(s => s.done && s.reps && (s.load != null || E.EXBYID[it.exId]?.bw)).forEach(s => {
-    (h[it.exId] = h[it.exId] || []).push({ date: w.date, load: +(s.load || 0), reps: +s.reps, rir: s.rir == null ? 2 : +s.rir });
+    (h[it.exId] = h[it.exId] || []).push({ date: w.date, load: +(s.load || 0), lb: toLb(it.exId, it.loc, +(s.load || 0)), reps: +s.reps, rir: s.rir == null ? 2 : +s.rir });
   })));
   return h;
 }
@@ -2297,7 +2306,7 @@ function viewToday() {
     const minSeg = `<div class="chips">${[30, 45, 60, 75].map(m => `<button class="chip" data-act="plan-min" data-v="${m}" aria-pressed="${+min === m}">${m} min</button>`).join('')}</div>`;
     let inner = '';
     if (plan.type === 'train') {
-      inner = `<div class="list" style="margin-top:6px">${plan.items.map((it, i) => `<div class="row between" style="padding:8px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${it.pair ? `<span class="pill blue" style="margin-right:6px">${it.pair}</span>` : ''}${esc(it.ex.name)}</div><div class="tiny muted">${E.MUSCLES[it.muscle]}</div></div><div class="num" style="text-align:right;white-space:nowrap;font-family:var(--display);font-weight:600;font-size:16px">${it.sets} × ${it.reps}<div class="tiny muted" style="font-family:var(--body);font-weight:400">${it.load != null ? (it.ex.loc === 'p1' ? 'dial ' + it.load + ' kg' : it.load + ' ' + E.unitOf(it.ex.loc)) : it.ex.bw ? 'bodyweight' : 'pick a weight'}</div></div></div>`).join('')}</div>
+      inner = `<div class="list" style="margin-top:6px">${plan.items.map((it, i) => `<div class="row between" style="padding:8px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${it.pair ? `<span class="pill blue" style="margin-right:6px">${it.pair}</span>` : ''}${esc(it.ex.name)}</div><div class="tiny muted">${E.MUSCLES[it.muscle]}</div></div><div class="num" style="text-align:right;white-space:nowrap;font-family:var(--display);font-weight:600;font-size:16px">${it.sets} × ${it.reps}<div class="tiny muted" style="font-family:var(--body);font-weight:400">${it.load != null ? (E.placeOf(it.ex.loc).perCable ? 'dial ' + it.load + ' kg · ' + toLb(it.ex.id, it.ex.loc, it.load) + ' lb' : it.load + ' ' + E.unitOf(it.ex.loc)) : it.ex.bw ? 'bodyweight' : 'pick a weight'}</div></div></div>`).join('')}</div>
         <div class="row" style="margin-top:12px">${started ? `<button class="btn primary block" data-act="go" data-v="train">${ICON.train} Continue session</button>` : `<button class="btn primary block" data-act="start-session">${ICON.train} Start ${esc(plan.dayName)}</button>`}</div>
         ${plan.readiness.band === 'red' ? `<button class="btn block ghost" style="margin-top:8px" data-act="plan-choice" data-v="walk">${ICON.walk} Swap for a recovery walk</button>` : ''}`;
     } else if (plan.type === 'recovery') {
@@ -2373,7 +2382,7 @@ function viewTrain() {
   }
   const histHtml = hist.length ? `<div class="card"><div class="card-h"><div class="eyebrow">Recent sessions</div></div><div class="list">${hist.map(w => {
     const sets = (w.items || []).reduce((s, it) => s + it.sets.filter(x => x.done).length, 0);
-    return `<details class="acc"><summary><span>${esc(w.dayName)} <span class="muted small" style="font-weight:400">· ${esc(prettyDate(w.date, { weekday: 'short', month: 'short', day: 'numeric' }))} · ${LOC_LABEL[w.location]}</span></span><span class="row" style="gap:6px;flex-wrap:nowrap"><span class="pill">${sets} sets</span>${ICON.chev.replace('<svg', '<svg width="16" height="16"')}</span></summary><div class="small">${(w.items || []).map(it => `<div style="padding:4px 0"><b style="font-weight:600">${esc(it.name)}</b><div class="muted mono">${it.sets.filter(s => s.done).map(s => `${s.load ?? '–'}${it.loc === 'p1' ? 'kg' : ''}×${s.reps}${s.rir != null ? '@' + s.rir : ''}`).join('  ') || 'no sets logged'}</div></div>`).join('')}</div></details>`;
+    return `<details class="acc"><summary><span>${esc(w.dayName)} <span class="muted small" style="font-weight:400">· ${esc(prettyDate(w.date, { weekday: 'short', month: 'short', day: 'numeric' }))} · ${LOC_LABEL[w.location]}</span></span><span class="row" style="gap:6px;flex-wrap:nowrap"><span class="pill">${sets} sets</span>${ICON.chev.replace('<svg', '<svg width="16" height="16"')}</span></summary><div class="small">${(w.items || []).map(it => `<div style="padding:4px 0"><b style="font-weight:600">${esc(it.name)}</b><div class="muted mono">${it.sets.filter(s => s.done).map(s => `${E.placeOf(it.loc).perCable ? (toLb(it.exId, it.loc, s.load) ?? '–') + 'lb' : (s.load ?? '–')}×${s.reps}${s.rir != null ? '@' + s.rir : ''}`).join('  ') || 'no sets logged'}</div></div>`).join('')}</div></details>`;
   }).join('')}</div></div>` : '';
   return `<div class="stack"><div style="padding-top:6px"><div class="eyebrow">${esc(prettyDate(t))}</div><h1 class="h-display h1" style="margin-top:4px">Train</h1></div>${body}${histHtml}</div>`;
 }
@@ -2409,7 +2418,7 @@ function exerciseBlock(w, it, i) {
       <div class="set set-h"><span>Set</span><span>${it.loc === 'p1' ? 'Dial kg' : ex.bw ? '+' + unit : unit}</span><span>Reps</span><span>Reps left</span><span></span></div>
       ${it.sets.map((s, j) => `<div class="set ${s.done ? 'done' : ''}">
         <span class="n">${j + 1}</span>
-        <input id="s-${i}-${j}-l" data-set="load" data-i="${i}" data-j="${j}" inputmode="decimal" value="${s.load ?? ''}" placeholder="${it.target ?? '–'}" aria-label="Load set ${j + 1}">
+        ${E.placeOf(it.loc).perCable ? `<span class="ld"><input id="s-${i}-${j}-l" data-set="load" data-i="${i}" data-j="${j}" inputmode="decimal" value="${s.load ?? ''}" placeholder="${it.target ?? '–'}" aria-label="Dial kg set ${j + 1}"><small id="s-${i}-${j}-lb">${(s.load ?? it.target) != null && (s.load ?? it.target) !== '' ? toLb(it.exId, it.loc, s.load ?? it.target) + ' lb' : ''}</small></span>` : `<input id="s-${i}-${j}-l" data-set="load" data-i="${i}" data-j="${j}" inputmode="decimal" value="${s.load ?? ''}" placeholder="${it.target ?? '–'}" aria-label="Load set ${j + 1}">`}
         <input id="s-${i}-${j}-r" data-set="reps" data-i="${i}" data-j="${j}" inputmode="numeric" value="${s.reps ?? ''}" placeholder="${esc(String(it.repTarget ?? ''))}" aria-label="Reps set ${j + 1}">
         <select id="s-${i}-${j}-x" data-set="rir" data-i="${i}" data-j="${j}" aria-label="Reps you could still do set ${j + 1}">${(rpeMode ? [0, 0.5, 1, 1.5, 2, 3] : [0, 1, 2, 3, 4]).map(v => `<option value="${v}" ${(s.rir ?? it.rir) == v ? 'selected' : ''}>${String(v).replace('.5', '½').replace(/^0½$/, '½')}</option>`).join('')}</select>
         <button class="ok" data-act="set-done" data-i="${i}" data-j="${j}" aria-label="${s.done ? 'Undo set' : 'Mark set done'}">${ICON.check}</button>
@@ -2602,8 +2611,8 @@ function viewProgress() {
         <div class="plates">${Object.keys(E.MUSCLES).filter(m => tgtVol[m] > 0).map(m => { const v = vol[m] || 0, g = tgtVol[m] || 1; return `<div class="plate" style="--col:${v >= g * 0.9 ? 'var(--good)' : v >= g * 0.5 ? 'var(--warn)' : 'var(--ink3)'}"><div class="lab" style="font-weight:500">${E.MUSCLES[m]}</div><div class="bar"><i style="width:${Math.min(100, v / g * 100)}%"></i></div><div class="val num">${fmt(v, v % 1 ? 1 : 0)}<span> / ${g}</span></div></div>`; }).join('')}</div>
         <p class="tiny muted" style="margin-top:10px">Bars fill as you train each area. Exercises that work an area indirectly count half.</p></div>
       <div class="card"><div class="card-h"><div class="eyebrow">Strength over time</div></div>
-        ${top.length ? `<div class="list">${top.map(([id, rows]) => { const ex = E.EXBYID[id]; const byD = {}; rows.forEach(r => byD[r.date] = Math.max(byD[r.date] || 0, E.e1rm(r.load, r.reps, r.rir))); const ds = Object.keys(byD).sort(); const vals = ds.map(d => byD[d]); const first = vals[0], lastv = vals[vals.length - 1]; const ch = first ? (lastv / first - 1) * 100 : 0;
-          return `<div class="row between" style="padding:9px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${esc(ex?.name || id)}</div><div class="tiny muted">${ds.length} session${ds.length === 1 ? '' : 's'}</div></div>${spark(vals)}<div style="text-align:right;min-width:74px"><div class="num" style="font-family:var(--display);font-weight:700;font-size:18px">${fmt(lastv, 1)} ${ex?.loc === 'p1' ? 'kg' : 'lb'}</div><div class="tiny" style="color:${ch >= 0 ? 'var(--good)' : 'var(--bad)'}">${ch >= 0 ? '+' : ''}${fmt(ch, 1)}%</div></div></div>`; }).join('')}</div>` : `<div class="empty">${ICON.train}<div>Log a couple of sessions to see strength trends.</div></div>`}</div>
+        ${top.length ? `<div class="list">${top.map(([id, rows]) => { const ex = E.EXBYID[id]; const byD = {}; rows.forEach(r => byD[r.date] = Math.max(byD[r.date] || 0, E.e1rm(r.lb ?? r.load, r.reps, r.rir))); const ds = Object.keys(byD).sort(); const vals = ds.map(d => byD[d]); const first = vals[0], lastv = vals[vals.length - 1]; const ch = first ? (lastv / first - 1) * 100 : 0;
+          return `<div class="row between" style="padding:9px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${esc(ex?.name || id)}</div><div class="tiny muted">${ds.length} session${ds.length === 1 ? '' : 's'}</div></div>${spark(vals)}<div style="text-align:right;min-width:74px"><div class="num" style="font-family:var(--display);font-weight:700;font-size:18px">${fmt(lastv, 0)} lb</div><div class="tiny" style="color:${ch >= 0 ? 'var(--good)' : 'var(--bad)'}">${ch >= 0 ? '+' : ''}${fmt(ch, 1)}%</div></div></div>`; }).join('')}</div>` : `<div class="empty">${ICON.train}<div>Log a couple of sessions to see strength trends.</div></div>`}</div>
     </div></div></div>`;
 }
 function spark(vals) {
@@ -3453,8 +3462,9 @@ function setDone(i, j) {
 }
 /* Personal records: beat your best estimated max (or most reps on bodyweight moves) from past sessions. */
 function checkPR(it, s) {
-  const prev = E.bestOf(setsHistory()[it.exId]); if (!prev || !+s.reps) return;
-  const unit = E.unitOf(it.loc);
+  const hist = (setsHistory()[it.exId] || []).map(r => ({ ...r, load: r.lb ?? r.load }));
+  const prev = E.bestOf(hist); if (!prev || !+s.reps) return;
+  const unit = 'lb'; s = { ...s, load: toLb(it.exId, it.loc, s.load) ?? s.load };
   let msg = null, val = 0;
   if (prev.kind === 'load' && +s.load > 0) { val = E.e1rm(+s.load, +s.reps, 0); if (val > prev.value + 0.5) msg = `${fmt(+s.load, s.load % 1 ? 1 : 0)} ${unit} for ${s.reps} reps beats your best. Your estimated max is now ${Math.round(val)} ${unit}, up from ${Math.round(prev.value)}.`; }
   else if (prev.kind === 'reps' && !(+s.load > 0)) { val = +s.reps; if (val > prev.value) msg = `${s.reps} reps beats your best of ${prev.value}.`; }
@@ -3811,7 +3821,7 @@ document.addEventListener('change', (ev) => {
     if (el.dataset.file2 === 'photo') camSave(file); }
   if (el.id === 'ef-date' || el.id === 'ef-qty') { readEf(); render(); }
   if (el.dataset.lg) { readLg(); render(); }
-  if (el.dataset.set) { const [i, j] = [+el.dataset.i, +el.dataset.j]; readSetInputs(i, j); saveDay(today()); }
+  if (el.dataset.set) { const [i, j] = [+el.dataset.i, +el.dataset.j]; readSetInputs(i, j); saveDay(today()); const lbEl = $(`#s-${i}-${j}-lb`); if (lbEl) { const it = activeWorkout().items[i]; const v = it.sets[j].load; lbEl.textContent = v != null && v !== '' ? toLb(it.exId, it.loc, v) + ' lb' : ''; } }
 });
 document.addEventListener('input', (ev) => {
   const el = ev.target;

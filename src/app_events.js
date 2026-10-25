@@ -110,8 +110,9 @@ function setDone(i, j) {
 }
 /* Personal records: beat your best estimated max (or most reps on bodyweight moves) from past sessions. */
 function checkPR(it, s) {
-  const prev = E.bestOf(setsHistory()[it.exId]); if (!prev || !+s.reps) return;
-  const unit = E.unitOf(it.loc);
+  const hist = (setsHistory()[it.exId] || []).map(r => ({ ...r, load: r.lb ?? r.load }));
+  const prev = E.bestOf(hist); if (!prev || !+s.reps) return;
+  const unit = 'lb'; s = { ...s, load: toLb(it.exId, it.loc, s.load) ?? s.load };
   let msg = null, val = 0;
   if (prev.kind === 'load' && +s.load > 0) { val = E.e1rm(+s.load, +s.reps, 0); if (val > prev.value + 0.5) msg = `${fmt(+s.load, s.load % 1 ? 1 : 0)} ${unit} for ${s.reps} reps beats your best. Your estimated max is now ${Math.round(val)} ${unit}, up from ${Math.round(prev.value)}.`; }
   else if (prev.kind === 'reps' && !(+s.load > 0)) { val = +s.reps; if (val > prev.value) msg = `${s.reps} reps beats your best of ${prev.value}.`; }
@@ -468,7 +469,7 @@ document.addEventListener('change', (ev) => {
     if (el.dataset.file2 === 'photo') camSave(file); }
   if (el.id === 'ef-date' || el.id === 'ef-qty') { readEf(); render(); }
   if (el.dataset.lg) { readLg(); render(); }
-  if (el.dataset.set) { const [i, j] = [+el.dataset.i, +el.dataset.j]; readSetInputs(i, j); saveDay(today()); }
+  if (el.dataset.set) { const [i, j] = [+el.dataset.i, +el.dataset.j]; readSetInputs(i, j); saveDay(today()); const lbEl = $(`#s-${i}-${j}-lb`); if (lbEl) { const it = activeWorkout().items[i]; const v = it.sets[j].load; lbEl.textContent = v != null && v !== '' ? toLb(it.exId, it.loc, v) + ' lb' : ''; } }
 });
 document.addEventListener('input', (ev) => {
   const el = ev.target;
