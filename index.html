@@ -266,12 +266,12 @@ details.acc > div{padding-bottom:12px}
   --display-tt:none; --display-ls:-.025em; --display-wt:700; --r:22px; --r-sm:13px; --eyebrow-ls:.02em;
   --tab-bg:rgba(28,28,30,.72); color-scheme:dark }
 :is(:root,.skinp)[data-skin="iron"]{
-  --bg:#070707; --surface:#111111; --surface2:#1C1C1C; --ink:#F4F4F4; --ink2:#A6A6A6; --ink3:#6B6B6B; --line:#2A2A2A; --steel:#E10612; --chalk:#FFFFFF;
-  --p:#FF3B3B; --c:#3D8BFF; --f:#FFC400; --k:#2BD96B; --good:#2BD96B; --warn:#FFC400; --bad:#FF3B3B;
-  --shadow:none; --card-border:#262626; --bw:2px;
+  --bg:#0B0B0B; --surface:#141414; --surface2:#1E1E1E; --ink:#EDEBE6; --ink2:#9C9A94; --ink3:#5F5D59; --line:#242424; --steel:#EDEBE6; --chalk:#0B0B0B;
+  --p:#D23A32; --c:#5E8FE0; --f:#D9A43B; --k:#4CB36E; --good:#4CB36E; --warn:#D9A43B; --bad:#D23A32; --accent:#D23A32;
+  --shadow:none; --card-border:#222222;
   --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif; --body:"Barlow",-apple-system,sans-serif;
-  --display-tt:uppercase; --display-ls:.02em; --display-wt:800; --r:3px; --r-sm:2px; --eyebrow-ls:.18em; --eyebrow-font:"Big Shoulders Display",sans-serif;
-  --texture:repeating-linear-gradient(-45deg,rgba(255,255,255,.018) 0 2px,transparent 2px 14px); --tab-bg:rgba(10,10,10,.92); color-scheme:dark }
+  --display-tt:uppercase; --display-ls:.015em; --display-wt:800; --r:8px; --r-sm:6px; --eyebrow-ls:.14em;
+  --texture:radial-gradient(120% 60% at 50% -10%,#161616 0%,#0B0B0B 60%); --tab-bg:rgba(14,14,14,.94); color-scheme:dark }
 :is(:root,.skinp)[data-skin="blush"]{
   --bg:#FFF5F6; --surface:#FFFFFF; --surface2:#FCE8EC; --ink:#3B2330; --ink2:#7D5D6B; --ink3:#B596A3; --line:#F5D9DF; --steel:#D9467A; --chalk:#FFFFFF;
   --p:#E0496E; --c:#7C6CF0; --f:#EFA23A; --k:#35B488; --good:#35B488; --warn:#EFA23A; --bad:#E0496E;
@@ -297,12 +297,20 @@ body{background-color:var(--bg);background-image:var(--texture);background-size:
 :root:is([data-skin="studio"],[data-skin="studio-dark"]) .tabs,:root:is([data-skin="studio"],[data-skin="studio-dark"]) header.top{-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
 :root:is([data-skin="studio"],[data-skin="studio-dark"]) .btn{border-radius:999px}
 :root:is([data-skin="studio"],[data-skin="studio-dark"]) .eyebrow{text-transform:none;font-weight:600;font-size:13px}
-/* iron: red rule on cards, hard buttons */
-:root[data-skin="iron"] .card{border-left:4px solid var(--steel)}
-:root[data-skin="iron"] .btn{text-transform:uppercase;letter-spacing:.08em;font-weight:700}
-:root[data-skin="iron"] .btn.primary{box-shadow:4px 4px 0 #000,4px 4px 0 1px var(--steel)}
-:root[data-skin="iron"] .h-display{font-size:1.12em}
-:root[data-skin="iron"] .eyebrow{color:var(--steel);font-weight:700}
+/* iron: matte black, off-white primary, red only for state */
+:root[data-skin="iron"] .btn{text-transform:uppercase;letter-spacing:.1em;font-weight:600;font-size:13px}
+:root[data-skin="iron"] .btn.primary{box-shadow:none}
+:root[data-skin="iron"] .eyebrow{color:var(--ink3);font-weight:600;font-size:11px;text-transform:uppercase}
+:root[data-skin="iron"] .seg{background:#101010;border:1px solid var(--line)}
+:root[data-skin="iron"] .seg button[aria-pressed="true"]{background:#262626;color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+:root[data-skin="iron"] .progress i{background:var(--accent)}
+:root[data-skin="iron"] .tabs button[aria-current="page"]{background:transparent;color:var(--ink)}
+:root[data-skin="iron"] .tabs button[aria-current="page"]::after{content:"";position:absolute;left:35%;right:35%;bottom:3px;height:2px;border-radius:2px;background:var(--accent)}
+:root[data-skin="iron"] .pill,:root[data-skin="iron"] .pill.blue{background:#1E1E1E;color:var(--ink2);border:1px solid #2A2A2A}
+:root[data-skin="iron"] .ex-tag{background:#1E1E1E;color:var(--ink);border:1px solid #2E2E2E}
+:root[data-skin="iron"] .pill{border-radius:4px;text-transform:uppercase;letter-spacing:.08em;font-size:10.5px}
+:root[data-skin="iron"] .big,:root[data-skin="iron"] .tile .v,:root[data-skin="iron"] .g-num{font-variant-numeric:tabular-nums}
+:root[data-skin="iron"] .card-h .h2,:root[data-skin="iron"] .h2{letter-spacing:.03em}
 /* blush: soft pills, rose gradient on primary */
 :root[data-skin="blush"] .btn,:root[data-skin="blush"] .chip{border-radius:999px}
 :root[data-skin="blush"] .btn.primary{background:linear-gradient(135deg,#E0496E,#B45AD8);border-color:transparent}
