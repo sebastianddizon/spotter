@@ -21,8 +21,10 @@ function render() {
       <main>${mainHtml}</main>
     </div></div>
     ${S.sheet ? `<div class="scrim" data-act="sheet-close-bg"><div class="sheet" role="dialog" aria-modal="true">${renderSheet()}</div></div>` : ''}
-    ${S.rest ? restPill() : ''}`;
+    ${S.rest ? restPill() : ''}
+    ${S.ui.pr ? `<div class="pr-pop" role="status" data-act="pr-close"><div class="pr-burst" aria-hidden="true">${Array.from({ length: 14 }, (_, k) => `<i style="--a:${k * 360 / 14}deg;--d:${(k % 3) * 60}ms"></i>`).join('')}</div><div class="pr-card"><div class="pr-ic">${ICON.trophy}</div><div class="eyebrow" style="color:var(--f)">New personal record</div><div class="h2" style="margin-top:2px">${esc(S.ui.pr.name)}</div><p class="small" style="margin-top:6px">${esc(S.ui.pr.msg)}</p></div></div>` : ''}`;
   window.scrollTo(0, keepScroll);
+  if (S.sheet?.type === 'cam' && S.ui.cam?.stream) { const v = $('#cam-v'); if (v && v.srcObject !== S.ui.cam.stream) { v.srcObject = S.ui.cam.stream; v.play().catch(() => {}); } }
   if (activeId) { const el = document.getElementById(activeId); if (el) { el.focus({ preventScroll: true }); try { if (selStart != null) el.setSelectionRange(selStart, selStart); } catch (e) {} } }
   const chat = $('#chat'); if (chat && S.ui.chatScroll) { chat.lastElementChild?.scrollIntoView({ block: 'end' }); S.ui.chatScroll = false; }
 }
@@ -38,11 +40,17 @@ function renderSheet() {
   if (s.type === 'editfood') return sheetEditFood();
   if (s.type === 'hotworx') return sheetHotworx();
   if (s.type === 'sport') return sheetSport();
+  if (s.type === 'travel') return sheetTravel();
+  if (s.type === 'order') return sheetOrder();
+  if (s.type === 'fridge') return sheetFridge();
+  if (s.type === 'cam') return sheetCam();
+  if (s.type === 'compare') return sheetCompare();
+  if (s.type === 'plates') return sheetPlates();
   return '';
 }
 function openSheet(s) { S.sheet = s; render(); }
 function startScan() { const v = $('#scan-video'); if (!v) return; LiveScan.start(v, code => { S.sheet.food.live = false; lookupBarcode(code); }, msg => { S.sheet.food.live = false; S.sheet.food.err = msg; render(); }); }
-function closeSheet() { LiveScan.stop(); S.sheet = null; S.ui.ci = null; render(); }
+function closeSheet() { LiveScan.stop(); try { stopCam(); } catch (e) {} S.sheet = null; S.ui.ci = null; render(); }
 
 /* ---------- rest timer ---------- */
 let restInt;
@@ -80,7 +88,9 @@ function setDone(i, j) {
   if (s.reps == null || s.reps === '') s.reps = typeof it.repTarget === 'number' ? it.repTarget : parseInt(it.reps) || 8;
   if (s.load == null || s.load === '') s.load = it.target ?? null;
   if (s.rir == null) s.rir = it.rir;
+  if ((s.load == null || s.load === '') && E.EXBYID[it.exId]?.bw) s.load = 0;
   s.done = true;
+  checkPR(it, s);
   const ex = E.EXBYID[it.exId] || { loc: it.loc, inc: E.placeOf(it.loc).inc };
   const next = it.sets[j + 1];
   if (it.strength && it.strength.type === 'pr' && j === 0) {
@@ -97,6 +107,19 @@ function setDone(i, j) {
   const pairNext = it.pair ? w.items.find((x, k) => k !== i && x.pair === it.pair) : null;
   startRest(pairNext ? 60 : (it.rest || 120));
   render();
+}
+/* Personal records: beat your best estimated max (or most reps on bodyweight moves) from past sessions. */
+function checkPR(it, s) {
+  const prev = E.bestOf(setsHistory()[it.exId]); if (!prev || !+s.reps) return;
+  const unit = E.unitOf(it.loc);
+  let msg = null, val = 0;
+  if (prev.kind === 'load' && +s.load > 0) { val = E.e1rm(+s.load, +s.reps, 0); if (val > prev.value + 0.5) msg = `${fmt(+s.load, s.load % 1 ? 1 : 0)} ${unit} for ${s.reps} reps beats your best. Your estimated max is now ${Math.round(val)} ${unit}, up from ${Math.round(prev.value)}.`; }
+  else if (prev.kind === 'reps' && !(+s.load > 0)) { val = +s.reps; if (val > prev.value) msg = `${s.reps} reps beats your best of ${prev.value}.`; }
+  if (!msg || (it.prBest && val <= it.prBest)) return;
+  it.prBest = val;
+  S.lib.prs = (S.lib.prs || []).concat({ exId: it.exId, name: it.name, date: today(), load: +s.load || 0, reps: +s.reps, unit }).slice(-200); saveLib();
+  S.ui.pr = { name: it.name, msg };
+  clearTimeout(window._prT); window._prT = setTimeout(() => { S.ui.pr = null; render(); }, 5000);
 }
 function readSetInputs(i, j) {
   const w = activeWorkout(); const s = w.items[i].sets[j];
@@ -301,6 +324,36 @@ document.addEventListener('click', async (ev) => {
     case 'plan-choice': { const d = day(today()); d.plan = { ...(d.plan || {}), choice: v || null }; saveDay(today()); render(); break; }
     case 'start-session': startSession(); break;
     case 'hx-open': openSheet({ type: 'hotworx' }); break;
+    case 'order-open': S.ui.order = {}; openSheet({ type: 'order' }); break;
+    case 'order-chain': { const o = S.ui.order; o.slug = v; o.items = null; o.photo = false; o.chain = (o.index || []).find(c => c.slug === v)?.chain; orderRun(); break; }
+    case 'order-back': { const o = S.ui.order; Object.assign(o, { slug: null, photo: false, picks: null, items: null, err: null, q: '' }); render(); break; }
+    case 'order-budget': { const o = S.ui.order; o.budget = Math.max(150, +($('#or-budget')?.value || o.budget)); if (o.slug) orderRun(); else render(); break; }
+    case 'order-log': { const o = S.ui.order, p = o.picks[+v]; logOrder(p.items, o.chain, p.est); closeSheet(); break; }
+    case 'order-one': { const o = S.ui.order; logOrder([o.items[+v]], o.chain, false); closeSheet(); break; }
+    case 'fridge-open': S.ui.fridge = S.ui.fridge || {}; openSheet({ type: 'fridge' }); break;
+    case 'fridge-go': fridgeRun(); break;
+    case 'fridge-log': { const m = S.ui.fridge.meals[+v]; addFood({ name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat, meal: defaultMeal(), source: 'describe' }); toast(`Logged ${m.name}`); closeSheet(); break; }
+    case 'ph-pose': { const P = S.ui.photos; P.pose = v; P.sel = []; render(); break; }
+    case 'ph-pick': { const P = S.ui.photos; P.sel = P.sel || []; P.sel = P.sel.includes(v) ? P.sel.filter(x => x !== v) : P.sel.concat(v).slice(-2); render(); break; }
+    case 'ph-compare': { const P = S.ui.photos; const ps = P.sel.map(id => P.list.find(x => x.id === id)).sort((a, b) => a.date < b.date ? -1 : 1); P.cmp = null; P.x = 50; openSheet({ type: 'compare' }); const full = await Promise.all(ps.map(x => Photos.full(x.id))); P.cmp = ps.map((x, k) => ({ ...x, src: full[k] })); render(); break; }
+    case 'ph-del': { if (!S.ui.phArm) { S.ui.phArm = true; el.textContent = 'Tap again to delete'; setTimeout(() => { S.ui.phArm = false; }, 4000); break; } S.ui.phArm = false; await Photos.del(v).catch(() => {}); S.ui.photos = { pose: S.ui.photos.pose }; closeSheet(); toast('Photo deleted'); break; }
+    case 'ph-cam': { const P = S.ui.photos || {}; const pose = P.pose || 'front'; const last = (P.list || []).filter(x => x.pose === pose).pop();
+      S.ui.cam = { pose, facing: 'user', op: 35 }; openSheet({ type: 'cam' }); camStart();
+      if (last) Photos.full(last.id).then(src => { if (S.ui.cam) { S.ui.cam.ghost = src; const v = $('#cam-v'); const st = S.ui.cam.stream; render(); const v2 = $('#cam-v'); if (v2 && st) { v2.srcObject = st; v2.play().catch(() => {}); } } }).catch(() => {});
+      break; }
+    case 'cam-flip': { const c = S.ui.cam; c.facing = c.facing === 'user' ? 'environment' : 'user'; render(); camStart(); break; }
+    case 'cam-shot': { const v = $('#cam-v'); if (v && v.videoWidth) camSave(v); break; }
+    case 'scan-rot': { S.ui.scanRot = ((S.ui.scanRot || 0) + 90) % 360; try { localStorage.setItem('fc:scanRot', S.ui.scanRot); } catch (e) {} const v = $('#scan-video'); if (v) v.style.transform = `rotate(${S.ui.scanRot}deg)`; break; }
+    case 'travel-open': openSheet({ type: 'travel' }); break;
+    case 'travel-bands': { const eq = new Set(S.profile.travelEquip || ['db', 'bench']); eq.has('bands') ? eq.delete('bands') : eq.add('bands'); S.profile.travelEquip = [...eq]; saveProfile(); render(); break; }
+    case 'travel-set': { const d = day(today()); const bands = (S.profile.travelEquip || []).includes('bands') ? ['bands'] : [];
+      if (v === 'full') d.plan = { ...(d.plan || {}), loc: (S.profile.locations || []).includes('gym') ? 'gym' : 'gym' };
+      else { S.profile.travelEquip = (v === 'room' ? [] : ['db', 'bench']).concat(bands); saveProfile(); d.plan = { ...(d.plan || {}), loc: 'hotel' }; }
+      saveDay(today()); S.brief = null; closeSheet(); toast(v === 'full' ? 'Gym workout' : 'Travel workout ready'); break; }
+    case 'plates-open': S.ui.plateLoad = null; openSheet({ type: 'plates', i: +el.dataset.i }); break;
+    case 'plates-bar': S.ui.plateLoad = +($('#pl-load')?.value || 0) || null; S.ui.bar = +v; render(); break;
+    case 'plates-use': { const it = activeWorkout().items[+el.dataset.i]; const val = +($('#pl-load')?.value || 0); const s = it.sets.find(x => !x.done); if (s && val) s.load = val; saveDay(today()); closeSheet(); break; }
+    case 'pr-close': S.ui.pr = null; render(); break;
     case 'sp-open': S.ui.sp = {}; openSheet({ type: 'sport' }); break;
     case 'sp-set': { const f = S.ui.sp; f[el.dataset.f] = el.dataset.f === 'k' || el.dataset.f === 'level' ? v : +v; if (el.dataset.f === 'k') f.min = E.SPORTBYK[v].min; render(); break; }
     case 'sp-log': { const f = S.ui.sp, sp = E.SPORTBYK[f.k]; const d = day(today()); d.workouts.push({ id: uid(), kind: 'sport', sport: f.k, level: f.level, dayName: sp.name, location: 'sport', minutes: f.min, done: true, startedAt: Date.now(), finishedAt: Date.now(), items: [] }); saveDay(today()); toast(`${sp.name} logged`); closeSheet(); break; }
@@ -408,12 +461,19 @@ document.addEventListener('click', async (ev) => {
 document.addEventListener('change', (ev) => {
   const el = ev.target;
   if (el.dataset.file) { const file = el.files?.[0]; if (file) handleFile(el.dataset.file, file); }
+  if (el.dataset.file2) { const file = el.files?.[0]; if (!file) return;
+    if (el.dataset.file2 === 'order') orderPhoto(file);
+    if (el.dataset.file2 === 'fridge') { const f = S.ui.fridge; f.text = $('#fr-text')?.value || f.text; shrinkImage(file).then(b => { f.image = b; if (f.preview) URL.revokeObjectURL(f.preview); f.preview = URL.createObjectURL(b); render(); }); }
+    if (el.dataset.file2 === 'photo') camSave(file); }
   if (el.id === 'ef-date' || el.id === 'ef-qty') { readEf(); render(); }
   if (el.dataset.lg) { readLg(); render(); }
   if (el.dataset.set) { const [i, j] = [+el.dataset.i, +el.dataset.j]; readSetInputs(i, j); saveDay(today()); }
 });
 document.addEventListener('input', (ev) => {
   const el = ev.target;
+  if (el.id === 'cam-op') { const g = $('#cam-g'); if (g) g.style.opacity = el.value / 100; if (S.ui.cam) S.ui.cam.op = +el.value; }
+  if (el.id === 'cmp-x') { const c = document.querySelector('.cmp'); if (c) c.style.setProperty('--x', el.value + '%'); S.ui.photos.x = +el.value; }
+  if (el.id === 'or-q') { S.ui.order.q = el.value; clearTimeout(window._orq); window._orq = setTimeout(() => { const pos = el.selectionStart; render(); const n = $('#or-q'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 250); }
   if (el.dataset.ob && S.ob) { S.ob.a[el.dataset.ob] = el.value; const btn = document.querySelector('[data-act="ob-next"]'); if (btn) btn.disabled = !obValid(S.ob.step, { ...S.ob.a, [el.dataset.ob]: el.value }); }
 });
 document.addEventListener('submit', (ev) => {
@@ -461,7 +521,7 @@ function captureFs() {
    BOOT
    ============================================================ */
 (async function boot() {
-  let sk = null; try { sk = localStorage.getItem('fc:skin'); } catch (e) {} applyTheme(SKIN_OLD[sk] || sk || 'auto');
+  let sk = null; try { sk = localStorage.getItem('fc:skin'); S.ui.scanRot = +(localStorage.getItem('fc:scanRot') || 0); } catch (e) {} applyTheme(SKIN_OLD[sk] || sk || 'auto');
   render();
   await Store.init();
   try {

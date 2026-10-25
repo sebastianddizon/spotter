@@ -316,6 +316,7 @@ const PLACES = {
   gym: { name: 'Gym', full: 'Commercial gym', unit: 'lb', inc: 5 },
   home: { name: 'Home', full: 'Home (free weights)', unit: 'lb', inc: 5 },
   hotworx: { name: 'HOTWORX', full: 'HOTWORX FX Zone', unit: 'lb', inc: 5 },
+  hotel: { name: 'Hotel', full: 'Traveling', unit: 'lb', inc: 5 },
   p1: { name: 'P1 Max', full: 'Innodigym P1 Max', unit: 'kg', inc: 1, max: 75, perCable: true, machine: true, modes: 'Standard, Eccentric, Chain' },
   sd: { name: 'Speediance', full: 'Speediance Gym Monster', unit: 'lb', inc: 1, max: 220, machine: true, modes: 'Standard, Eccentric, Chain, Constant' },
   tonal: { name: 'Tonal', full: 'Tonal', unit: 'lb', inc: 1, max: 250, machine: true, modes: 'Standard, Eccentric, Chains, Burnout, Spotter' },
@@ -327,6 +328,24 @@ const HOME_EQUIP = [
   { k: 'bench', t: 'Bench' }, { k: 'bb', t: 'Barbell and rack' }, { k: 'rings', t: 'Gymnastic rings' }, { k: 'parallettes', t: 'Parallettes or handstand bars' }, { k: 'dip', t: 'Dip bars' }
 ];
 function placeOf(loc) { return PLACES[loc] || PLACES.gym; }
+/* Hotel workouts use the home library with whatever the hotel has. */
+function libOf(loc) { return loc === 'hotel' ? 'home' : loc; }
+function equipFor(profile, loc) { return loc === 'hotel' ? (profile.travelEquip || ['db', 'bench']) : (profile.homeEquip || []); }
+/* Plates per side for a barbell. Greedy with standard lb plates. */
+function platesFor(total, bar = 45, plates = [45, 35, 25, 10, 5, 2.5]) {
+  let side = (total - bar) / 2; const out = [];
+  if (side < 0) return { ok: false, side: 0, plates: [], leftover: 0 };
+  for (const p of plates) { while (side >= p - 1e-9) { out.push(p); side -= p; } }
+  return { ok: side < 0.01, plates: out, leftover: Math.round(side * 100) / 100 };
+}
+function isBarbell(ex) { return !!ex && (ex.equip === 'barbell' || (ex.need || []).includes('bb') || /barbell|deadlift|back squat/i.test(ex.name || '')) && !PLACES[ex.loc]?.machine; }
+/* Best set so far: estimated max for weighted sets, most reps for bodyweight. */
+function bestOf(rows) {
+  if (!rows || !rows.length) return null;
+  const w = rows.filter(r => +r.load > 0);
+  if (w.length) { const b = w.reduce((m, r) => { const e = e1rm(+r.load, +r.reps, 0); return e > m.e ? { e, r } : m; }, { e: 0, r: null }); return { kind: 'load', value: b.e, row: b.r }; }
+  const b = rows.reduce((m, r) => +r.reps > (m?.reps || 0) ? r : m, null); return { kind: 'reps', value: +b.reps, row: b };
+}
 function unitOf(loc) { return placeOf(loc).unit; }
 function unitText(loc) { const p = placeOf(loc); return loc === 'p1' ? 'kg on the dial' : p.perCable ? 'kg per cable' : p.machine ? 'lb on the screen' : 'lb'; }
 
@@ -1009,7 +1028,7 @@ function dailyPlan(ctx) {
     }
   }
   day.slots.forEach(slot => {
-    const ex = exerciseFor(slot, loc, profile, used);
+    const ex = exerciseFor(slot, libOf(loc), loc === 'hotel' ? { ...profile, homeEquip: equipFor(profile, loc) } : profile, used);
     if (!ex) { adj.push(`No ${MUSCLES[slot.muscle]} exercise here, so it is skipped today.`); return; }
     used.add(ex.id);
     let sets = Math.max(1, Math.round(slot.sets * setMul));
@@ -1023,8 +1042,8 @@ function dailyPlan(ctx) {
   });
   // shoulder-health finisher: 2 light sets of face pulls or external rotation every session
   if (profile.prehab !== false && !items.some(i => i.ex.prehab)) {
-    const haveE = new Set(profile.homeEquip || []);
-    const ph = EX.find(e => e.loc === loc && e.prehab && !used.has(e.id) && !(profile.avoid || []).includes(e.id) && (e.need || []).every(k => haveE.has(k)));
+    const haveE = new Set(equipFor(profile, loc));
+    const ph = EX.find(e => e.loc === libOf(loc) && e.prehab && !used.has(e.id) && !(profile.avoid || []).includes(e.id) && (e.need || []).every(k => haveE.has(k)));
     if (ph) { used.add(ph.id); items.push({ slotKey: 'prehab', muscle: ph.m, ex: ph, prehab: true, sets: 2, reps: `${ph.rr[0]}-${ph.rr[1]}`, repTarget: ph.rr[0] + 3, rir: 2, load: suggestLoad(ph, setsHistory[ph.id], ph.rr[0] + 3, 2, {}).load, basis: 'Finish with this light exercise to keep your shoulders healthy.', rest: 45 }); }
   }
   if (soreSet.size) adj.push(`Sore today: ${[...soreSet].map(m => MUSCLES[m] || m).join(', ')}. A little less work for those.`);
@@ -1085,7 +1104,7 @@ function nutritionNotes(target, yTotals, plan) {
 
 const api = { KG, MUSCLES, LEG_MUSCLES, EX, EXBYID, isoDate, addDays, daysBetween, weekdayOf, clamp, round, sum, avg,
   estimateTDEE, calcTargets, leanCategory, lossRatePct, trendSeries, adaptiveTDEE, weeklyReview,
-  PLACES, HOME_EQUIP, SPORTS, SPORTBYK, placeOf, unitOf, unitText,
+  PLACES, HOME_EQUIP, SPORTS, SPORTBYK, placeOf, unitOf, unitText, libOf, equipFor, platesFor, isBarbell, bestOf,
   weeklySetTargets, splitFor, buildProgram, exerciseFor, e1rm, loadFor, suggestLoad, p1Display,
   readiness, nextDayIndex, deloadCheck, dailyPlan, dayTotals, nutritionNotes, weekNumber,
   HOTWORX, PROTOCOLS, rapidCaps, carbcycleEligible, dayTargets, dietBreakLimitWeeks, nextSetLoad, STRPLAN, strRound, strBase, strSession, strBackoff, strNextTop };

@@ -325,6 +325,33 @@ body{background-color:var(--bg);background-image:var(--texture);background-size:
 :root[data-skin="gilt"] .btn{text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:500}
 :root[data-skin="gilt"] .btn.primary{background:linear-gradient(180deg,#D9BD7A,#B8954A);color:#0A0A0C;border-color:transparent;box-shadow:0 0 0 1px rgba(201,169,97,.35),0 10px 24px -14px rgba(201,169,97,.6)}
 :root[data-skin="gilt"] .card{box-shadow:inset 0 1px 0 rgba(201,169,97,.12)}
+/* ---------- plates + personal records ---------- */
+.plate-vis{display:flex;align-items:center;gap:3px;height:96px;padding:0 6px;overflow:hidden}
+.pv-bar{width:64px;height:12px;border-radius:3px;background:linear-gradient(180deg,#c9ccd1,#8c9096)}
+.pv-plate{width:14px;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.pv-end{width:22px;height:16px;border-radius:3px;background:linear-gradient(180deg,#c9ccd1,#8c9096)}
+.pr-pop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(0,0,0,.35);animation:prFade .25s ease}
+.pr-card{position:relative;max-width:320px;margin:0 20px;padding:22px 20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);text-align:center;box-shadow:0 24px 60px -20px rgba(0,0,0,.6);animation:prPop .45s cubic-bezier(.2,1.4,.4,1)}
+.pr-ic{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--f) 18%,transparent);color:var(--f)}
+.pr-ic svg{width:28px;height:28px}
+.pr-burst{position:absolute;width:0;height:0}
+.pr-burst i{position:absolute;width:8px;height:8px;border-radius:2px;background:var(--f);transform:rotate(var(--a)) translateY(0);opacity:0;animation:prBurst .9s ease-out var(--d) forwards}
+.pr-burst i:nth-child(3n){background:var(--p)}.pr-burst i:nth-child(3n+1){background:var(--c)}
+@keyframes prBurst{0%{opacity:1;transform:rotate(var(--a)) translateY(0)}100%{opacity:0;transform:rotate(var(--a)) translateY(-170px) rotate(200deg)}}
+@keyframes prPop{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes prFade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.pr-card,.pr-burst i,.pr-pop{animation:none}.pr-burst{display:none}}
+/* ---------- progress photos ---------- */
+.ph-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.ph-th{flex:none;width:84px;padding:0;border:2px solid transparent;border-radius:12px;background:var(--surface2);overflow:hidden;position:relative}
+.ph-th[aria-pressed="true"]{border-color:var(--c)}
+.ph-th img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover}
+.ph-th span{position:absolute;left:0;right:0;bottom:0;padding:3px 0;font-size:11px;font-weight:600;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+.cam-box,.cmp{position:relative;width:100%;max-width:420px;margin:0 auto;aspect-ratio:3/4;max-height:58vh;border-radius:var(--r-sm);overflow:hidden;background:#000}
+.cam-box video,.cam-ghost,.cmp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam-ghost{pointer-events:none;filter:grayscale(1) contrast(1.2)}
+.cmp-top{position:absolute;inset:0;clip-path:inset(0 0 0 var(--x))}
+.cmp-line{position:absolute;top:0;bottom:0;left:var(--x);width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 /* ---------- premium touches ---------- */
 .btn,.chip,.add,.iconbtn,.seg button,.scale button,.set .ok,.tabs button{transition:transform .12s ease,background-color .15s,color .15s,box-shadow .15s}
 .btn:active,.chip:active,.add:active,.iconbtn:active,.set .ok:active{transform:scale(.96)}
@@ -678,6 +705,7 @@ const PLACES = {
   gym: { name: 'Gym', full: 'Commercial gym', unit: 'lb', inc: 5 },
   home: { name: 'Home', full: 'Home (free weights)', unit: 'lb', inc: 5 },
   hotworx: { name: 'HOTWORX', full: 'HOTWORX FX Zone', unit: 'lb', inc: 5 },
+  hotel: { name: 'Hotel', full: 'Traveling', unit: 'lb', inc: 5 },
   p1: { name: 'P1 Max', full: 'Innodigym P1 Max', unit: 'kg', inc: 1, max: 75, perCable: true, machine: true, modes: 'Standard, Eccentric, Chain' },
   sd: { name: 'Speediance', full: 'Speediance Gym Monster', unit: 'lb', inc: 1, max: 220, machine: true, modes: 'Standard, Eccentric, Chain, Constant' },
   tonal: { name: 'Tonal', full: 'Tonal', unit: 'lb', inc: 1, max: 250, machine: true, modes: 'Standard, Eccentric, Chains, Burnout, Spotter' },
@@ -689,6 +717,24 @@ const HOME_EQUIP = [
   { k: 'bench', t: 'Bench' }, { k: 'bb', t: 'Barbell and rack' }, { k: 'rings', t: 'Gymnastic rings' }, { k: 'parallettes', t: 'Parallettes or handstand bars' }, { k: 'dip', t: 'Dip bars' }
 ];
 function placeOf(loc) { return PLACES[loc] || PLACES.gym; }
+/* Hotel workouts use the home library with whatever the hotel has. */
+function libOf(loc) { return loc === 'hotel' ? 'home' : loc; }
+function equipFor(profile, loc) { return loc === 'hotel' ? (profile.travelEquip || ['db', 'bench']) : (profile.homeEquip || []); }
+/* Plates per side for a barbell. Greedy with standard lb plates. */
+function platesFor(total, bar = 45, plates = [45, 35, 25, 10, 5, 2.5]) {
+  let side = (total - bar) / 2; const out = [];
+  if (side < 0) return { ok: false, side: 0, plates: [], leftover: 0 };
+  for (const p of plates) { while (side >= p - 1e-9) { out.push(p); side -= p; } }
+  return { ok: side < 0.01, plates: out, leftover: Math.round(side * 100) / 100 };
+}
+function isBarbell(ex) { return !!ex && (ex.equip === 'barbell' || (ex.need || []).includes('bb') || /barbell|deadlift|back squat/i.test(ex.name || '')) && !PLACES[ex.loc]?.machine; }
+/* Best set so far: estimated max for weighted sets, most reps for bodyweight. */
+function bestOf(rows) {
+  if (!rows || !rows.length) return null;
+  const w = rows.filter(r => +r.load > 0);
+  if (w.length) { const b = w.reduce((m, r) => { const e = e1rm(+r.load, +r.reps, 0); return e > m.e ? { e, r } : m; }, { e: 0, r: null }); return { kind: 'load', value: b.e, row: b.r }; }
+  const b = rows.reduce((m, r) => +r.reps > (m?.reps || 0) ? r : m, null); return { kind: 'reps', value: +b.reps, row: b };
+}
 function unitOf(loc) { return placeOf(loc).unit; }
 function unitText(loc) { const p = placeOf(loc); return loc === 'p1' ? 'kg on the dial' : p.perCable ? 'kg per cable' : p.machine ? 'lb on the screen' : 'lb'; }
 
@@ -1371,7 +1417,7 @@ function dailyPlan(ctx) {
     }
   }
   day.slots.forEach(slot => {
-    const ex = exerciseFor(slot, loc, profile, used);
+    const ex = exerciseFor(slot, libOf(loc), loc === 'hotel' ? { ...profile, homeEquip: equipFor(profile, loc) } : profile, used);
     if (!ex) { adj.push(`No ${MUSCLES[slot.muscle]} exercise here, so it is skipped today.`); return; }
     used.add(ex.id);
     let sets = Math.max(1, Math.round(slot.sets * setMul));
@@ -1385,8 +1431,8 @@ function dailyPlan(ctx) {
   });
   // shoulder-health finisher: 2 light sets of face pulls or external rotation every session
   if (profile.prehab !== false && !items.some(i => i.ex.prehab)) {
-    const haveE = new Set(profile.homeEquip || []);
-    const ph = EX.find(e => e.loc === loc && e.prehab && !used.has(e.id) && !(profile.avoid || []).includes(e.id) && (e.need || []).every(k => haveE.has(k)));
+    const haveE = new Set(equipFor(profile, loc));
+    const ph = EX.find(e => e.loc === libOf(loc) && e.prehab && !used.has(e.id) && !(profile.avoid || []).includes(e.id) && (e.need || []).every(k => haveE.has(k)));
     if (ph) { used.add(ph.id); items.push({ slotKey: 'prehab', muscle: ph.m, ex: ph, prehab: true, sets: 2, reps: `${ph.rr[0]}-${ph.rr[1]}`, repTarget: ph.rr[0] + 3, rir: 2, load: suggestLoad(ph, setsHistory[ph.id], ph.rr[0] + 3, 2, {}).load, basis: 'Finish with this light exercise to keep your shoulders healthy.', rest: 45 }); }
   }
   if (soreSet.size) adj.push(`Sore today: ${[...soreSet].map(m => MUSCLES[m] || m).join(', ')}. A little less work for those.`);
@@ -1447,7 +1493,7 @@ function nutritionNotes(target, yTotals, plan) {
 
 const api = { KG, MUSCLES, LEG_MUSCLES, EX, EXBYID, isoDate, addDays, daysBetween, weekdayOf, clamp, round, sum, avg,
   estimateTDEE, calcTargets, leanCategory, lossRatePct, trendSeries, adaptiveTDEE, weeklyReview,
-  PLACES, HOME_EQUIP, SPORTS, SPORTBYK, placeOf, unitOf, unitText,
+  PLACES, HOME_EQUIP, SPORTS, SPORTBYK, placeOf, unitOf, unitText, libOf, equipFor, platesFor, isBarbell, bestOf,
   weeklySetTargets, splitFor, buildProgram, exerciseFor, e1rm, loadFor, suggestLoad, p1Display,
   readiness, nextDayIndex, deloadCheck, dailyPlan, dayTotals, nutritionNotes, weekNumber,
   HOTWORX, PROTOCOLS, rapidCaps, carbcycleEligible, dayTargets, dietBreakLimitWeeks, nextSetLoad, STRPLAN, strRound, strBase, strSession, strBackoff, strNextTop };
@@ -1591,6 +1637,11 @@ function prettyDate(iso, opts = { weekday: 'long', month: 'short', day: 'numeric
 /* ---------- icons (inline, stroke) ---------- */
 const I = (d, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
 const ICON = {
+  plane: I('<path d="M10.5 13.5 3 11l1.5-1.5 7.5 1L16 6.5a2.1 2.1 0 0 1 3 3L15 13.5l1 7.5-1.5 1.5-2.5-7.5-3.5 3.5V21l-1.5 1-1-3-3-1 1-1.5h2.5z"/>'),
+  trophy: I('<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>'),
+  fridge: I('<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M5 10h14M9 6v2M9 13v3"/>'),
+  menu: I('<path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5"/>'),
+  photo: I('<path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/>'),
   today: I('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
   train: I('<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>'),
   food: I('<path d="M7 3v8a2 2 0 0 0 2 2v8M11 3v8a2 2 0 0 1-2 2M9 3v6M17 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"/>'),
@@ -1742,8 +1793,8 @@ function allWorkouts() {
 }
 function setsHistory() {
   const h = {};
-  allWorkouts().filter(w => w.done).forEach(w => (w.items || []).forEach(it => (it.sets || []).filter(s => s.done && s.load != null && s.reps).forEach(s => {
-    (h[it.exId] = h[it.exId] || []).push({ date: w.date, load: +s.load, reps: +s.reps, rir: s.rir == null ? 2 : +s.rir });
+  allWorkouts().filter(w => w.done).forEach(w => (w.items || []).forEach(it => (it.sets || []).filter(s => s.done && s.reps && (s.load != null || E.EXBYID[it.exId]?.bw)).forEach(s => {
+    (h[it.exId] = h[it.exId] || []).push({ date: w.date, load: +(s.load || 0), reps: +s.reps, rir: s.rir == null ? 2 : +s.rir });
   })));
   return h;
 }
@@ -1941,12 +1992,23 @@ const LiveScan = {
           let code = null;
           if (det) { try { const r = await det.detect(video); code = r?.[0]?.rawValue || null; } catch (e) {} }
           if (!code) {
-            // crop the middle band where the barcode sits
-            const vw = video.videoWidth, vh = video.videoHeight, c = document.createElement('canvas');
-            const cw = Math.min(900, vw), ch = Math.round(cw * 0.5); c.width = cw; c.height = ch;
-            const x = c.getContext('2d'); x.filter = 'grayscale(1) contrast(1.3)';
-            const sw = vw * 0.9, sh = sw * 0.5; x.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, cw, ch);
-            code = zxCanvas(Z, reader, c);
+            // Some phones (foldables especially) hand the browser a sideways camera picture.
+            // Read the middle of the frame both ways so the barcode is found however it arrives.
+            const vw = video.videoWidth, vh = video.videoHeight;
+            const band = (rot) => {
+              const c = document.createElement('canvas'); const x = c.getContext('2d');
+              const long = Math.min(vw, vh) * 0.95, short = long * 0.55;
+              const sw = rot ? short : long, sh = rot ? long : short;
+              const cw = 900, ch = Math.round(900 * short / long); c.width = cw; c.height = ch;
+              x.filter = 'grayscale(1) contrast(1.3)';
+              if (rot) { x.translate(cw / 2, ch / 2); x.rotate(Math.PI / 2); x.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, -ch / 2, -cw / 2, ch, cw); }
+              else x.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, cw, ch);
+              return zxCanvas(Z, reader, c);
+            };
+            code = band(this.flip) || band(!this.flip);
+            if (code) this.flip = !!this.flip;
+            this.n = (this.n || 0) + 1;
+            if (!code && this.n % 4 === 0) { const c = document.createElement('canvas'); const k = 1000 / Math.max(vw, vh); c.width = Math.round(vw * k); c.height = Math.round(vh * k); c.getContext('2d').drawImage(video, 0, 0, c.width, c.height); code = zxCanvas(Z, reader, c); }
           }
           if (code) { try { navigator.vibrate?.(60); } catch (e) {} this.stop(); return onCode(code); }
         }
@@ -2164,7 +2226,7 @@ async function obFinish() {
    VIEWS
    ============================================================ */
 const LOC_LABEL = new Proxy({ off: 'Rest' }, { get: (o, k) => o[k] || (E.PLACES[k] ? E.PLACES[k].name : k === 'sport' ? 'Sport' : String(k || '')) });
-const haveEquip = e => { const h = new Set(S.profile?.homeEquip || []); return (e.need || []).every(k => h.has(k)); };
+const haveEquip = (e, loc) => { const h = new Set(E.equipFor(S.profile || {}, loc || 'home')); return (e.need || []).every(k => h.has(k)); };
 
 function plateBars(t, tot) {
   const rows = [
@@ -2231,7 +2293,7 @@ function viewToday() {
       <p class="small muted">Logged at ${LOC_LABEL[w.location]}. The next session picks up from here.</p>
       <div class="row" style="margin-top:10px"><button class="btn sm" data-act="go" data-v="train">View log</button></div></div>`;
   } else {
-    const locSeg = `<div class="chips" role="group" aria-label="Where are you training">${(p.locations || ['gym']).concat('off').map(l => `<button class="chip" data-act="plan-loc" data-v="${l}" aria-pressed="${loc === l}">${l === 'gym' || l === 'hotworx' ? ICON.gym.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"') : E.PLACES[l] ? ICON.home.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"') : ICON.bed.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"')} ${LOC_LABEL[l]}</button>`).join('')}</div>`;
+    const locSeg = `<div class="chips" role="group" aria-label="Where are you training">${(p.locations || ['gym']).concat(['hotel', 'off']).map(l => `<button class="chip" data-act="${l === 'hotel' ? 'travel-open' : 'plan-loc'}" data-v="${l}" aria-pressed="${loc === l}">${l === 'hotel' ? ICON.plane.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"') : l === 'gym' || l === 'hotworx' ? ICON.gym.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"') : E.PLACES[l] ? ICON.home.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"') : ICON.bed.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"')} ${l === 'hotel' ? (loc === 'hotel' ? 'Traveling' : 'Traveling?') : LOC_LABEL[l]}</button>`).join('')}</div>`;
     const minSeg = `<div class="chips">${[30, 45, 60, 75].map(m => `<button class="chip" data-act="plan-min" data-v="${m}" aria-pressed="${+min === m}">${m} min</button>`).join('')}</div>`;
     let inner = '';
     if (plan.type === 'train') {
@@ -2337,7 +2399,7 @@ function exerciseBlock(w, it, i) {
     <div class="ex-h"><div class="ex-tag ${it.main ? 'main' : it.pair ? 'pair' : ''}">${tag}</div>
       <div style="flex:1;min-width:0"><div class="ex-name">${esc(it.name)}</div>
         <div class="ex-meta">${E.MUSCLES[it.muscle] || ''} · ${it.sets.length} × ${esc(it.reps)} · ${it.rir ? 'stop ' + it.rir + ' rep' + (it.rir > 1 ? 's' : '') + ' early' : 'go until you can\'t do another'}${E.placeOf(it.loc).machine && ex.mode ? ` · <span class="pill" style="padding:1px 7px">${ex.mode} mode</span>` : ''}</div>
-        ${loadLabel({ ...ex, loc: it.loc }, it.target)}
+        <div class="row" style="gap:8px;align-items:center">${loadLabel({ ...ex, loc: it.loc }, it.target)}${E.isBarbell(ex) && E.unitOf(it.loc) === 'lb' ? `<button class="btn sm ghost" data-act="plates-open" data-i="${i}">Plates</button>` : ''}</div>
         ${it.cue ? `<div class="tiny muted" style="margin-top:5px">${esc(it.cue)}</div>` : ''}
         ${it.basis ? `<div class="basis">${esc(it.basis)}</div>` : ''}
       </div>
@@ -2359,11 +2421,11 @@ function exerciseBlock(w, it, i) {
 
 function sheetSwap(i) {
   const w = day(today()).workouts.find(x => !x.done); const it = w.items[i];
-  const fits = e => !e.mainOnly && haveEquip(e) && (e.m === it.muscle || (e.sec || []).includes(it.muscle)) && e.id !== it.exId;
+  const fits = e => !e.mainOnly && haveEquip(e, e.loc === 'home' && w.location === 'hotel' ? 'hotel' : 'home') && (e.m === it.muscle || (e.sec || []).includes(it.muscle)) && e.id !== it.exId;
   const srt = (a, b) => (a.m === it.muscle ? 0 : 1) - (b.m === it.muscle ? 0 : 1) || a.tier - b.tier;
   const mine = new Set([w.location, ...(S.profile.locations || [])]);
-  const alts = E.EX.filter(e => e.loc === w.location && fits(e)).sort(srt);
-  const other = E.EX.filter(e => e.loc !== w.location && (mine.has(e.loc) || e.loc === 'mine') && fits(e)).sort(srt);
+  const alts = E.EX.filter(e => e.loc === E.libOf(w.location) && fits(e)).sort(srt);
+  const other = E.EX.filter(e => e.loc !== E.libOf(w.location) && (mine.has(e.loc) || e.loc === 'mine') && fits(e)).sort(srt);
   return `<div class="grab"></div><div class="stack"><div><div class="eyebrow">Swap</div><div class="h2">${esc(it.name)}</div><p class="small muted">Pick a replacement for ${E.MUSCLES[it.muscle]}. "Keep" makes it the default for this slot from now on.</p></div>
     <div class="list">${alts.map(e => `<div class="row between" style="padding:10px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${esc(e.name)} ${e.tier === 1 ? '<span class="pill good">Best pick</span>' : ''}</div><div class="tiny muted">${esc(e.cue)}</div></div><div class="row" style="flex-wrap:nowrap;gap:6px"><button class="btn sm" data-act="swap-do" data-i="${i}" data-v="${e.id}">Today</button><button class="btn sm primary" data-act="swap-do" data-i="${i}" data-v="${e.id}" data-keep="1">Keep</button></div></div>`).join('') || '<p class="muted">No alternatives at this location.</p>'}</div>
     ${other.length ? `<details class="acc"><summary>With other equipment you have ${ICON.chev.replace('<svg', '<svg width="16" height="16"')}</summary><div class="list">${other.map(e => `<div class="row between" style="padding:10px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${esc(e.name)}</div><div class="tiny muted">${esc(e.loc === 'mine' ? 'Your exercise' : E.placeOf(e.loc).full)}</div></div><div class="row" style="flex-wrap:nowrap;gap:6px"><button class="btn sm" data-act="swap-do" data-i="${i}" data-v="${e.id}">Today</button><button class="btn sm primary" data-act="swap-do" data-i="${i}" data-v="${e.id}" data-keep="1">Keep</button></div></div>`).join('')}</div></details>` : ''}
@@ -2381,7 +2443,7 @@ function myExForm(mode, i, muscle) {
 function sheetAddExercise() {
   const w = day(today()).workouts.find(x => !x.done);
   const mine = new Set([w.location, ...(S.profile.locations || []), 'mine']);
-  const list = E.EX.filter(e => (w.free ? mine.has(e.loc) : (e.loc === w.location || e.loc === 'mine')) && !e.mainOnly && haveEquip(e));
+  const list = E.EX.filter(e => (w.free ? (mine.has(e.loc) || e.loc === E.libOf(w.location)) : (e.loc === E.libOf(w.location) || e.loc === 'mine')) && !e.mainOnly && haveEquip(e, w.location));
   return `<div class="grab"></div><div class="stack"><div class="h2">Add exercise</div><div class="list">${Object.keys(E.MUSCLES).map(m => {
     const xs = list.filter(e => e.m === m); if (!xs.length) return '';
     return `<details class="acc"><summary>${E.MUSCLES[m]} ${ICON.chev.replace('<svg', '<svg width="16" height="16"')}</summary><div>${xs.map(e => `<button class="btn sm" style="margin:3px" data-act="add-ex-do" data-v="${e.id}">${esc(e.name)}</button>`).join('')}</div></details>`;
@@ -2408,6 +2470,7 @@ function viewFood() {
         ${tgt.note ? `<p class="tiny muted" style="margin-top:10px">${esc(tgt.note)}</p>` : ''}</div>
         ${logBox()}
         ${(S.profile.supps || []).length ? `<div class="card"><div class="card-h"><div class="eyebrow">Supplements</div><div class="tiny muted">${(d.supps || []).filter(id => S.profile.supps.some(x => x.id === id)).length} of ${S.profile.supps.length} taken</div></div><div class="chips">${S.profile.supps.map(x => `<button class="chip" data-act="sup-take" data-v="${x.id}" aria-pressed="${(d.supps || []).includes(x.id)}">${esc(x.name)}${x.kcal ? ` <span style="opacity:.7">${fmt(x.kcal)} kcal</span>` : ''}</button>`).join('')}</div><p class="tiny muted" style="margin-top:8px">Tap what you took. Anything with calories is added to your day. Change your list in Settings under Profile and plan.</p></div>` : ''}
+        <div class="card"><div class="eyebrow" style="margin-bottom:10px">Need an idea?</div><div class="adds" style="grid-template-columns:1fr 1fr">${add('order-open', ICON.menu, 'Eating out')}${add('fridge-open', ICON.fridge, 'From my fridge', !ai)}</div></div>
         <div class="card"><div class="eyebrow" style="margin-bottom:10px">Other ways to add</div>
           <div class="adds" style="grid-template-columns:repeat(3,1fr)">${add('food-search', ICON.food, 'Search')}${add('food-barcode', ICON.barcode, 'Barcode')}${add('food-recipes', ICON.label.replace('M8 7h8', 'M8 7h8'), 'Recipes')}${add('food-photo', ICON.camera, 'Photo', !ai || !S.sampleImages)}${add('food-label', ICON.label, 'Label', !ai || !S.sampleImages)}${add('food-quick', ICON.plus, 'Quick')}</div>
           ${!ai ? '<p class="tiny muted" style="margin-top:8px">Photo, label and describe use Claude. Allow Claude for this page from the artifact menu to turn them on.</p>' : ''}
@@ -2442,7 +2505,7 @@ function sheetFood() {
       ${f.preview ? `<img src="${f.preview}" alt="Label photo" style="border-radius:12px;max-height:220px;object-fit:contain;width:100%">` : ''}
       <label class="f">Product name (optional)<input class="inp" id="fs-note" data-fs="note" value="${esc(f.note || '')}"></label>
       <button class="btn block primary" data-act="fs-readlabel" ${f.image ? '' : 'disabled'}>${ICON.spark} Read label</button>`;
-    if (kind === 'barcode') inner = `${f.live ? `<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3"><video id="scan-video" muted playsinline style="width:100%;height:100%;object-fit:cover"></video><div style="position:absolute;left:5%;right:5%;top:28%;bottom:28%;border:2px solid rgba(255,255,255,.85);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.35)"></div></div><p class="small muted">Hold the barcode inside the box. It reads on its own.</p><button class="btn block" data-act="scan-stop">Stop camera</button>`
+    if (kind === 'barcode') inner = `${f.live ? `<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:1/1;max-height:62vh;margin:0 auto;width:100%"><video id="scan-video" muted playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:rotate(${S.ui.scanRot || 0}deg)"></video><div style="position:absolute;left:5%;right:5%;top:28%;bottom:28%;border:2px solid rgba(255,255,255,.85);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.35)"></div></div><p class="small muted">Hold the barcode inside the box, about 5 inches away. It reads on its own, either direction.</p><div class="row" style="gap:8px;flex-wrap:nowrap"><button class="btn" style="flex:1" data-act="scan-rot">Picture sideways? Rotate</button><button class="btn" style="flex:1" data-act="scan-stop">Stop camera</button></div>`
         : `${LiveScan.supported() ? `<button class="btn block primary" data-act="scan-live">${ICON.barcode} Scan with camera</button>` : ''}<p class="small muted">Over 400,000 US products are built in. Products not in the database ask for one label photo, then they are saved.</p>`}
       <label class="btn block ${LiveScan.supported() ? '' : 'primary'}" for="fs-file">${ICON.camera} Photograph barcode</label><input id="fs-file" type="file" accept="image/*" hidden data-file="barcode">
       <label class="f">Or type the number<input class="inp" id="fs-code" data-fs="code" inputmode="numeric" value="${esc(f.code || '')}"></label>
@@ -2519,7 +2582,7 @@ function viewProgress() {
   const hist = setsHistory();
   const top = Object.entries(hist).sort((a, b) => b[1].length - a[1].length).slice(0, 6);
   const rateGoal = p.goal === 'fatloss' ? -(p.weightLb * T.ratePct / 100) : null;
-  return `<div class="stack"><div style="padding-top:6px"><div class="eyebrow">Last 60 days</div><h1 class="h-display h1" style="margin-top:4px">Progress</h1></div>
+  return `<div class="stack"><div style="padding-top:6px"><div class="eyebrow">Last 60 days</div><h1 class="h-display h1" style="margin-top:4px">Progress</h1></div>${photosCard()}
     <div class="tiles">
       <div class="tile"><div class="k">Average weight</div><div class="v num">${lastT ? fmt(lastT, 1) : '–'}<span class="small muted"> lb</span></div></div>
       <div class="tile"><div class="k">7-day change</div><div class="v num" style="color:${rate == null ? 'var(--ink)' : (p.goal === 'fatloss' ? (rate < 0 ? 'var(--good)' : 'var(--warn)') : 'var(--ink)')}">${rate == null ? '–' : (rate > 0 ? '+' : '') + fmt(rate, 2)}</div><div class="tiny muted">${rateGoal ? 'target ' + fmt(rateGoal, 1) + '/wk' : ''}</div></div>
@@ -2639,6 +2702,31 @@ function sheetEditFood() {
     <p class="tiny muted">Change the amount to scale everything, or type exact numbers.</p>
     <div class="row"><button class="btn ghost danger" data-act="ef-del" data-armed="${S.ui.efArm ? 1 : 0}">${S.ui.efArm ? 'Tap again to delete' : 'Delete'}</button><button class="btn" data-act="ef-dup">Log again today</button><button class="btn primary" style="flex:1" data-act="ef-save">Save</button></div>
   </div>`;
+}
+
+function sheetTravel() {
+  const p = S.profile, eq = new Set(p.travelEquip || ['db', 'bench']);
+  const opt = (v, t, s) => `<button class="add" style="text-align:left;align-items:flex-start;padding:14px" data-act="travel-set" data-v="${v}"><b>${t}</b><span class="tiny muted" style="font-weight:400">${s}</span></button>`;
+  return `<div class="grab"></div><div class="stack"><div class="h2">Traveling</div><p class="small muted">Pick what you have and today's workout switches to match. Your regular plan stays the same.</p>
+    <div class="stack" style="gap:8px">${opt('room', 'Hotel room', 'No equipment. Push-ups, split squats, table rows and more.')}${opt('gym', 'Hotel gym', 'Dumbbells and a bench, the usual hotel setup.')}${opt('full', 'Real gym nearby', 'Use your normal gym workout.')}</div>
+    <div class="chips"><button class="chip" data-act="travel-bands" aria-pressed="${eq.has('bands')}">I packed resistance bands</button></div></div>`;
+}
+function sheetPlates() {
+  const w = activeWorkout(), it = w?.items[S.sheet.i]; if (!it) return '';
+  const bar = +(S.ui.bar || 45);
+  const s = it.sets.find(x => !x.done) || it.sets[it.sets.length - 1];
+  const total = +(S.ui.plateLoad ?? s?.load ?? it.target ?? 135);
+  const r = E.platesFor(total, bar);
+  const col = { 45: '#2F6FE0', 35: '#E0B020', 25: '#2FA35A', 10: '#E6E6E6', 5: '#D9473B', 2.5: '#8A8F96' };
+  const ht = { 45: 86, 35: 76, 25: 66, 10: 50, 5: 40, 2.5: 32 };
+  return `<div class="grab"></div><div class="stack"><div><div class="eyebrow">Plates</div><div class="h2">${esc(it.name)}</div></div>
+    <div class="row" style="flex-wrap:nowrap;gap:10px;align-items:end"><label class="f" style="flex:1">Total weight (lb)<input class="inp" id="pl-load" data-act-input="plates" inputmode="decimal" type="number" value="${total}"></label>
+    <div class="seg" style="flex:none">${[45, 35, 15].map(b => `<button type="button" data-act="plates-bar" data-v="${b}" aria-pressed="${bar === b}">${b} lb bar</button>`).join('')}</div></div>
+    ${total < bar ? `<p class="small" style="color:var(--warn)">That is less than the bar. Use a lighter bar or dumbbells.</p>` : `
+    <div class="plate-vis" aria-hidden="true"><div class="pv-bar"></div>${r.plates.map(p => `<div class="pv-plate" style="height:${ht[p]}px;background:${col[p]}"></div>`).join('')}<div class="pv-end"></div></div>
+    <p style="font-size:18px;font-weight:600">${r.plates.length ? 'Each side: ' + Object.entries(r.plates.reduce((m, p) => (m[p] = (m[p] || 0) + 1, m), {})).sort((a, b) => b[0] - a[0]).map(([p, n]) => `${n} × ${p}`).join(' + ') : 'Just the bar'}</p>
+    ${r.leftover ? `<p class="small muted">With standard plates the closest is ${total - r.leftover * 2} lb. You would need ${r.leftover} lb more on each side.</p>` : ''}`}
+    <button class="btn block primary" data-act="plates-use" data-i="${S.sheet.i}">Use ${total} lb for my next set</button></div>`;
 }
 
 function sheetSport() {
@@ -2974,6 +3062,276 @@ function pickToLog(row) {
 }
 
 /* ============================================================
+   EATING OUT (order picker), FRIDGE IDEAS, PROGRESS PHOTOS
+   ============================================================ */
+
+/* ---------- what is left today ---------- */
+function leftToday() {
+  const d = day(today()), tgt = targetFor(today()), tot = E.dayTotals(d.food);
+  return { kcal: Math.max(0, Math.round(tgt.kcal - tot.kcal)), protein: Math.max(0, Math.round(tgt.protein - tot.protein)), carbs: Math.max(0, Math.round(tgt.carbs - tot.carbs)), fat: Math.max(0, Math.round(tgt.fat - tot.fat)), target: tgt };
+}
+function defaultBudget() {
+  const l = leftToday(); const cap = Math.round(l.target.kcal * 0.55);
+  return Math.max(300, Math.min(l.kcal || cap, cap));
+}
+
+/* ---------- restaurant menus (food/menus/<slug>.json) ---------- */
+const Menus = {
+  async index() { try { return await FoodDB.j('food/menus/index.json'); } catch (e) { return []; } },
+  async menu(slug) { const m = await FoodDB.j(`food/menus/${slug}.json`); return m.items.map(r => ({ name: r[0], cat: r[1], serving: r[2], kcal: r[3], protein: r[4], carbs: r[5], fat: r[6], fiber: r[7] })); }
+};
+const RX = {
+  drink: /\b(soda|coke|sprite|pepsi|dr pepper|tea|lemonade|coffee|latte|frappe|shake|smoothie|beer|wine|cocktail|margarita|juice|water|milk|drink|beverage|float|slush)\b/i,
+  dessert: /\b(dessert|cookie|brownie|pie|sundae|cake|cheesecake|churro|cobbler|ice cream|pizookie|blondie|donut|cinnamon)\b/i,
+  sauce: /\b(sauce|dressing|dip|ranch|salsa|syrup|condiment|seasoning|ketchup|mustard|mayo|gravy|queso dip|honey|butter|vinaigrette|aioli|glaze|rub)\b/i,
+  skip: /\b(kid|kids|child|family|party|catering|platter|bucket|tray|gallon|\d{2,} ?(pc|piece|count|ct)\b|share|sharing)\b/i
+};
+function classify(it) {
+  const t = `${it.name} ${it.cat}`;
+  if (RX.skip.test(t) || it.kcal > 1800) return 'skip';
+  if (RX.drink.test(t) && !/\bchicken|burger|sandwich|bowl|taco\b/i.test(it.name)) return 'drink';
+  if (RX.dessert.test(t)) return 'dessert';
+  if (RX.sauce.test(t) && it.kcal < 260) return 'sauce';
+  if (/(burger|double-double|\bsandwich|bowl|burrito|taco|salad|steak|sirloin|ribeye|filet|chop|wrap|quesadilla|entree|combo|platter|fillet|salmon|pasta|tenders?|strips?|fingers?)\b/i.test(it.name) && it.kcal >= 150) return 'main';
+  if (it.kcal >= 250 || it.protein >= 18) return 'main';
+  return 'side';
+}
+/** Best orders for a calorie budget. Tries one main, main + side, and main + side + sauce. Returns three different picks. */
+/* Chains where you build your own (bowl, burrito): protein + rice + beans + toppings. */
+function buildOwn(items, budget) {
+  const cat = re => items.filter(x => re.test(x.cat) && !/kid/i.test(x.cat + x.name) && !/large/i.test(x.name));
+  const prot = cat(/^protein$/i), rice = cat(/rice/i), beans = cat(/bean/i);
+  if (!prot.length || !rice.length) return null;
+  const tops = cat(/salsa|topping|veggie/i).filter(x => x.kcal <= 240 && !/lettuce|salad mix/i.test(x.name));
+  const shells = [{ name: 'Bowl', kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, none: true }, ...cat(/tortilla/i).filter(x => /burrito/i.test(x.name))];
+  const out = [];
+  for (const sh of shells) for (const p of prot) for (const dbl of [1, 2]) for (const r of [null, ...rice]) for (const bn of [null, ...beans]) {
+    const base = [sh.none ? null : sh, ...Array(dbl).fill(p), r, bn].filter(Boolean);
+    const t0 = base.reduce((m, x) => m + x.kcal, 0); if (t0 > budget) continue;
+    for (let i = -1; i < tops.length; i++) for (let j = i + 1; j <= tops.length; j++) {
+      const extra = [tops[i], tops[j]].filter(Boolean); const list = base.concat(extra);
+      out.push({ items: list, label: `${sh.name}: ${dbl === 2 ? 'double ' : ''}${p.name.toLowerCase()}${r ? ', ' + r.name.replace(/Cilantro-Lime /, '').toLowerCase() : ''}${bn ? ', ' + bn.name.toLowerCase() : ''}${extra.length ? ', ' + extra.map(x => x.name.replace(/ \(.*\)/, '').toLowerCase()).join(', ') : ''}` });
+    }
+  }
+  return out;
+}
+/* Items sold by the piece (wings, fingers) become 4, 6, 8 or 10 piece orders. */
+function piecesExpand(items) {
+  const out = [];
+  items.forEach(it => {
+    if (/^1 (piece|pc|wing|finger|tender|strip|nugget)/i.test(it.serving) && it.kcal < 260) {
+      const counts = /wing/i.test(it.name) ? [4, 6, 8, 10] : [2, 3, 4, 5];
+      counts.forEach(n => out.push({ ...it, name: `${n} × ${it.name}`, serving: `${n} pieces`, kcal: it.kcal * n, protein: it.protein * n, carbs: it.carbs * n, fat: it.fat * n, fiber: (it.fiber || 0) * n, pieces: n, k: 'main' }));
+    } else out.push(it);
+  });
+  return out;
+}
+function pickOrders(items, budget, proteinLeft) {
+  const own = buildOwn(items, budget);
+  if (own) return rankCombos(own.map(c => ({ ...c, ...c.items.reduce((m, x) => ({ kcal: m.kcal + x.kcal, protein: m.protein + x.protein, carbs: m.carbs + x.carbs, fat: m.fat + x.fat }), { kcal: 0, protein: 0, carbs: 0, fat: 0 }) })).filter(c => c.kcal <= budget && c.kcal >= Math.min(250, budget * 0.4)), budget, proteinLeft);
+  items = piecesExpand(items);
+  const rows = items.map(it => ({ ...it, k: it.k || classify(it) })).filter(x => x.k !== 'skip' && x.k !== 'drink' && x.k !== 'dessert' && x.kcal > 0);
+  const mains = rows.filter(x => x.k === 'main' && x.kcal <= budget);
+  const adds = rows.filter(x => (x.k === 'side' || x.k === 'sauce') && x.kcal <= Math.max(120, budget * 0.5));
+  const topAdds = [...adds].sort((a, b) => (b.protein + 5) / (b.kcal + 40) - (a.protein + 5) / (a.kcal + 40)).slice(0, 40);
+  const combos = [];
+  const push = (list) => {
+    const t = list.reduce((m, x) => ({ kcal: m.kcal + x.kcal, protein: m.protein + x.protein, carbs: m.carbs + x.carbs, fat: m.fat + x.fat }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+    if (t.kcal > budget || t.kcal < Math.min(250, budget * 0.4)) return;
+    combos.push({ items: list, ...t });
+  };
+  mains.forEach(m => {
+    push([m]);
+    topAdds.forEach((a, i) => { if (a.name === m.name || a.k !== 'side') return; push([m, a]);
+      topAdds.forEach(b => { if (b !== a && b.name !== a.name && (b.k === 'sauce' || b.kcal < 120)) push([m, a, b]); });
+    });
+  });
+  return rankCombos(combos, budget, proteinLeft);
+}
+function rankCombos(combos, budget, proteinLeft) {
+  if (!combos.length) return [];
+  const pGoal = Math.max(25, Math.min(proteinLeft || 40, 70));
+  const balance = c => Math.min(c.protein, pGoal) * 3 + Math.min(c.kcal / budget, 1) * 40 - c.fat * 0.35 - Math.max(0, c.items.length - (c.label ? 5 : 2)) * 6;
+  const key = c => c.items.map(x => x.name).sort().join('|');
+  const out = [], used = new Set();
+  const take = (title, why, sorter, filter = () => true) => {
+    const head = x => x.label ? x.label.split(',')[0] : x.items[0].name.replace(/^\d+ × /, '');
+    const c = combos.filter(filter).sort(sorter).find(x => !used.has(key(x)) && !out.some(o => head(o) === head(x)));
+    if (c) { used.add(key(c)); out.push({ title, why, ...c }); }
+  };
+  take('Most protein', 'Gets you closest to your protein for the day.', (a, b) => b.protein - a.protein || a.kcal - b.kcal);
+  take('Best balance', 'Good protein and enough food to feel full, inside your budget.', (a, b) => balance(b) - balance(a));
+  take('Lighter pick', 'Saves calories for later and still has solid protein.', (a, b) => a.kcal - b.kcal, c => c.protein >= Math.min(25, pGoal * 0.6));
+  return out;
+}
+
+function sheetOrder() {
+  const o = S.ui.order = S.ui.order || {};
+  const l = leftToday();
+  if (o.budget == null) o.budget = defaultBudget();
+  const ai = !!S.sample && S.sampleImages;
+  let body = '';
+  if (!o.index) { Menus.index().then(ix => { o.index = ix; if (S.sheet?.type === 'order') render(); }); body = '<p class="small muted"><span class="spinner"></span> Loading menus</p>'; }
+  else if (!o.slug && !o.photo) {
+    body = `<div class="chips">${o.index.map(c => `<button class="chip" data-act="order-chain" data-v="${c.slug}">${esc(c.chain)}</button>`).join('')}</div>
+      ${ai ? `<div class="divider"></div><p class="small muted">Somewhere else? Take a photo of the menu and get the best picks.</p><label class="btn block" for="or-file" style="margin-top:8px">${ICON.camera} Photo of a menu</label><input id="or-file" type="file" accept="image/*" hidden data-file2="order">` : ''}`;
+  } else if (o.busy) body = `<p class="small muted"><span class="spinner"></span> ${o.photo ? 'Reading the menu' : 'Finding the best orders'}</p>`;
+  else if (o.err) body = `<p class="small" style="color:var(--bad)">${esc(o.err)}</p><button class="btn sm" data-act="order-back">Back</button>`;
+  else {
+    const picks = o.picks || [];
+    body = `<div class="row between"><b>${esc(o.chain || 'Menu')}</b><button class="btn sm ghost" data-act="order-back">Change</button></div>
+      ${picks.length ? picks.map((p, k) => `<div class="card flat stack" style="padding:14px;gap:8px"><div><div class="row between" style="flex-wrap:nowrap"><div class="eyebrow">${esc(p.title)}</div><div class="num" style="font-weight:700;white-space:nowrap">${fmt(p.kcal)} kcal</div></div><div class="row between tiny muted" style="flex-wrap:nowrap;margin-top:2px"><span>${esc(p.why)}</span><span style="white-space:nowrap">P ${fmt(p.protein)} · C ${fmt(p.carbs)} · F ${fmt(p.fat)}</span></div></div>
+        ${p.label ? `<div class="small" style="font-weight:600">${esc(p.label[0].toUpperCase() + p.label.slice(1))}</div>` : ''}<ul class="small" style="margin:0;padding-left:18px">${p.items.map(x => `<li>${esc(x.name)}${x.serving && !/^1 (item|ea|each|serving)$/i.test(x.serving) ? ` <span class="muted">(${esc(x.serving)})</span>` : ''}</li>`).join('')}</ul>
+        <button class="btn sm primary" data-act="order-log" data-v="${k}">Log this order</button></div>`).join('')
+        : `<p class="small muted">Nothing on this menu fits ${fmt(o.budget)} calories. Try a bigger budget.</p>`}
+      ${o.items ? `<details class="acc"><summary>Pick items yourself ${ICON.chev.replace('<svg', '<svg width="16" height="16"')}</summary><input class="inp" id="or-q" placeholder="Search this menu" value="${esc(o.q || '')}" data-act-input="order-q" style="margin:8px 0">
+        <div class="list">${o.items.filter(x => !o.q || x.name.toLowerCase().includes(o.q.toLowerCase())).slice(0, 40).map((x, k) => `<div class="row between" style="padding:8px 0;flex-wrap:nowrap"><div style="min-width:0"><div class="small" style="font-weight:500">${esc(x.name)}</div><div class="tiny muted">${fmt(x.kcal)} kcal · P ${fmt(x.protein)}</div></div><button class="btn sm" data-act="order-one" data-v="${o.items.indexOf(x)}">Log</button></div>`).join('')}</div></details>` : ''}`;
+  }
+  return `<div class="grab"></div><div class="stack"><div><div class="eyebrow">Eating out</div><div class="h2">What should I order?</div></div>
+    <div class="row" style="flex-wrap:nowrap;gap:10px;align-items:end"><label class="f" style="flex:1">Calories to spend<input class="inp" id="or-budget" inputmode="numeric" type="number" value="${o.budget}"></label><button class="btn sm" data-act="order-budget" style="margin-bottom:4px">Update</button></div>
+    <p class="tiny muted" style="margin-top:-6px">You have ${fmt(l.kcal)} calories and ${fmt(l.protein)} g protein left today.</p>
+    ${body}</div>`;
+}
+async function orderRun() {
+  const o = S.ui.order; o.busy = true; o.err = null; render();
+  try {
+    if (!o.items) o.items = await Menus.menu(o.slug);
+    o.picks = pickOrders(o.items, +o.budget, leftToday().protein);
+  } catch (e) { o.err = 'Could not load that menu. Check your connection and try again.'; }
+  o.busy = false; render();
+}
+async function orderPhoto(file) {
+  const o = S.ui.order; o.photo = true; o.busy = true; o.err = null; o.slug = null; o.items = null; render();
+  try {
+    const img = await shrinkImage(file, 1800); const l = leftToday();
+    const r = await S.sample.json(`You help someone order at a restaurant while sticking to their nutrition targets. Read the menu in the photo. If you recognize the restaurant, use its published nutrition; otherwise estimate from typical recipes and portions, rounding kcal to the nearest 10.
+They want to spend about ${o.budget} calories and have ${l.protein} g protein left today.
+Pick three different orders from this menu: "Best balance" (good protein, filling, within budget), "Most protein" (within budget), "Lighter pick" (well under budget, still decent protein). Each order is one or more menu items, with simple changes if they help (sauce on the side, no cheese).
+Return only JSON: {"chain": string, "picks": [{"title": string, "why": string (one plain sentence), "items": [{"name": string, "kcal": number, "protein": number, "carbs": number, "fat": number}]}]}`, { images: [img], modelTier: 'default' });
+    o.chain = r.chain || 'This menu';
+    o.picks = (r.picks || []).map(p => { const t = (p.items || []).reduce((m, x) => ({ kcal: m.kcal + (+x.kcal || 0), protein: m.protein + (+x.protein || 0), carbs: m.carbs + (+x.carbs || 0), fat: m.fat + (+x.fat || 0) }), { kcal: 0, protein: 0, carbs: 0, fat: 0 }); return { title: p.title, why: p.why, items: p.items || [], ...t, est: true }; });
+  } catch (e) { o.err = aiError(e); }
+  o.busy = false; render();
+}
+function logOrder(list, chain, est) {
+  const meal = defaultMeal();
+  list.forEach(x => addFood({ name: `${x.name}${chain ? ' (' + chain + ')' : ''}`, kcal: x.kcal, protein: x.protein, carbs: x.carbs, fat: x.fat, fiber: x.fiber || 0, meal, source: est ? 'describe' : 'restaurant' }));
+  toast(`Logged to ${meal}`);
+}
+
+/* ---------- fridge ideas ---------- */
+function sheetFridge() {
+  const f = S.ui.fridge = S.ui.fridge || {};
+  const l = leftToday(); const ai = !!S.sample;
+  let res = '';
+  if (f.busy) res = '<p class="small muted"><span class="spinner"></span> Coming up with meals</p>';
+  else if (f.err) res = `<p class="small" style="color:var(--bad)">${esc(f.err)}</p>`;
+  else if (f.meals) res = f.meals.map((m, k) => `<div class="card flat stack" style="padding:14px;gap:8px"><div class="row between" style="align-items:flex-start"><div style="min-width:0"><div class="h2" style="font-size:18px">${esc(m.name)}</div><div class="tiny muted">${m.minutes ? m.minutes + ' min · ' : ''}${esc(m.why || '')}</div></div><div class="num" style="text-align:right;font-weight:600;white-space:nowrap">${fmt(m.kcal)} kcal<div class="tiny muted">P ${fmt(m.protein)} · C ${fmt(m.carbs)} · F ${fmt(m.fat)}</div></div></div>
+      <ul class="small" style="margin:0;padding-left:18px">${(m.ingredients || []).map(x => `<li>${esc(x.amount ? x.amount + ' ' : '')}${esc(x.name)}</li>`).join('')}</ul>
+      ${(m.steps || []).length ? `<details class="acc"><summary>How to make it ${ICON.chev.replace('<svg', '<svg width="16" height="16"')}</summary><ol class="small" style="padding-left:18px">${m.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol></details>` : ''}
+      <button class="btn sm primary" data-act="fridge-log" data-v="${k}">I made this, log it</button></div>`).join('');
+  return `<div class="grab"></div><div class="stack"><div><div class="eyebrow">Fridge</div><div class="h2">What can I make?</div></div>
+    ${ai ? `<label class="f">What's in your fridge and pantry?<textarea class="inp" id="fr-text" rows="3" placeholder="e.g. chicken thighs, eggs, rice, spinach, cheddar, tortillas, salsa">${esc(f.text || '')}</textarea></label>
+    <div class="row" style="gap:8px;flex-wrap:nowrap"><label class="btn" for="fr-file" style="flex:1">${ICON.camera} ${f.preview ? 'Change photo' : 'Add a fridge photo'}</label><input id="fr-file" type="file" accept="image/*" hidden data-file2="fridge"><button class="btn primary" style="flex:1" data-act="fridge-go" ${f.busy ? 'disabled' : ''}>${ICON.spark} Suggest meals</button></div>
+    ${f.preview ? `<img src="${f.preview}" alt="Fridge photo" style="border-radius:12px;max-height:160px;object-fit:cover;width:100%">` : ''}
+    <p class="tiny muted">Meals are built to fit your ${fmt(l.kcal)} calories and ${fmt(l.protein)} g protein left today.</p>${res}`
+    : '<p class="small muted">Meal ideas use Claude. Allow Claude for this page from the artifact menu to turn them on.</p>'}</div>`;
+}
+async function fridgeRun() {
+  const f = S.ui.fridge; f.text = $('#fr-text')?.value || f.text || '';
+  if (!f.text.trim() && !f.image) { f.err = 'Type what you have or add a photo first.'; return render(); }
+  f.busy = true; f.err = null; render();
+  const l = leftToday(); const p = S.profile;
+  try {
+    const opts = { modelTier: 'default' }; if (f.image) opts.images = [f.image];
+    const r = await S.sample.json(`Suggest 3 simple meals someone can make right now from what they have. Use mostly the listed or pictured foods; assume salt, pepper, oil and common spices are available.
+They have about ${l.kcal} calories, ${l.protein} g protein, ${l.carbs} g carbs and ${l.fat} g fat left today${p.dislikes ? `, and avoid: ${p.dislikes}` : ''}. Make at least one meal high in protein. Keep each meal at or under ${Math.max(350, Math.min(l.kcal || 600, Math.round(l.target.kcal * 0.5)))} calories unless the remaining calories are higher and it is their last meal.
+Use realistic amounts and USDA-style values. Plain words, short steps.
+What they have: ${f.text || '(see photo)'}
+Return only JSON: {"meals":[{"name": string, "minutes": number, "why": string (one short sentence), "ingredients":[{"name": string, "amount": string}], "steps":[string], "kcal": number, "protein": number, "carbs": number, "fat": number}]}`, opts);
+    f.meals = (r.meals || []).slice(0, 3);
+  } catch (e) { f.err = aiError(e); }
+  f.busy = false; render();
+}
+
+/* ---------- progress photos ---------- */
+const Photos = {
+  local: !window.SPOTTER_CONFIG?.apiUrl || !!window.claude,
+  db() { return this._db || (this._db = new Promise((res, rej) => { const r = indexedDB.open('spotter-photos', 1); r.onupgradeneeded = () => r.result.createObjectStore('p', { keyPath: 'id' }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); },
+  async tx(mode, fn) { const d = await this.db(); return new Promise((res, rej) => { const t = d.transaction('p', mode); const st = t.objectStore('p'); const r = fn(st); t.oncomplete = () => res(r?.result); t.onerror = () => rej(t.error); }); },
+  async list() {
+    if (Store.mode === 'api' && !this.local) { const r = await Api.call('photoList'); return r.photos || []; }
+    const all = await this.tx('readonly', st => st.getAll()); return (all || []).map(x => ({ id: x.id, date: x.date, pose: x.pose, thumb: x.thumb }));
+  },
+  async save(date, pose, full, thumb) {
+    if (Store.mode === 'api' && !this.local) return Api.call('photoSave', { date, pose, full, thumb }, 90000);
+    const id = uid(); await this.tx('readwrite', st => st.put({ id, date, pose, full, thumb })); return { ok: true, id };
+  },
+  async full(id) {
+    const c = (this._full = this._full || {}); if (c[id]) return c[id];
+    let b64;
+    if (Store.mode === 'api' && !this.local) b64 = (await Api.call('photoGet', { id }, 60000)).full;
+    else b64 = (await this.tx('readonly', st => st.get(id)))?.full;
+    return (c[id] = 'data:image/jpeg;base64,' + b64);
+  },
+  async del(id) { if (Store.mode === 'api' && !this.local) return Api.call('photoDelete', { id }); return this.tx('readwrite', st => st.delete(id)); }
+};
+async function canvasB64(src, max, q) {
+  const bmp = src instanceof HTMLVideoElement ? src : await createImageBitmap(src);
+  const w = src.videoWidth || bmp.width, h = src.videoHeight || bmp.height;
+  const k = Math.min(1, max / Math.max(w, h)); const c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+  const g = c.getContext('2d');
+  if (src instanceof HTMLVideoElement && S.ui.cam?.facing === 'user') { g.translate(c.width, 0); g.scale(-1, 1); }
+  g.drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', q).split(',')[1];
+}
+function photosCard() {
+  const P = S.ui.photos = S.ui.photos || {};
+  if (!P.list && !P.loading) { P.loading = true; Photos.list().then(l => { P.list = l.sort((a, b) => a.date < b.date ? -1 : 1); P.loading = false; if (S.view === 'progress') render(); }).catch(() => { P.list = []; P.loading = false; P.err = true; if (S.view === 'progress') render(); }); }
+  const list = P.list || [];
+  const pose = P.pose || 'front';
+  const mine = list.filter(x => x.pose === pose);
+  return `<div class="card"><div class="card-h"><div><div class="eyebrow">Progress photos</div><div class="tiny muted" style="margin-top:2px">${Photos.local || Store.mode !== 'api' ? 'Saved on this device only.' : 'Private. Saved to your own Google Drive, never shared.'}</div></div><button class="btn sm primary" data-act="ph-cam">${ICON.photo} Take</button></div>
+    <div class="seg" style="margin-bottom:10px">${['front', 'side', 'back'].map(k => `<button data-act="ph-pose" data-v="${k}" aria-pressed="${pose === k}">${k[0].toUpperCase() + k.slice(1)}</button>`).join('')}</div>
+    ${P.loading ? '<p class="small muted"><span class="spinner"></span></p>' : mine.length ? `<div class="ph-strip">${mine.slice().reverse().map(x => `<button class="ph-th" data-act="ph-pick" data-v="${x.id}" aria-pressed="${(P.sel || []).includes(x.id)}"><img src="data:image/jpeg;base64,${x.thumb}" alt="${esc(x.pose)} ${esc(x.date)}"><span>${esc(prettyDate(x.date, { month: 'short', day: 'numeric' }))}</span></button>`).join('')}</div>
+      <p class="tiny muted" style="margin-top:8px">${mine.length > 1 ? 'Tap two photos to compare them.' : 'Take another in a week or two to compare.'}</p>${(P.sel || []).length === 2 ? `<button class="btn block" style="margin-top:8px" data-act="ph-compare">Compare</button>` : ''}`
+      : `<p class="small muted">No ${pose} photos yet. Same spot, same light, same time of day works best. Spotter shows a faint outline of your last photo so you can match the pose.</p>`}
+  </div>`;
+}
+function sheetCam() {
+  const c = S.ui.cam || {};
+  return `<div class="grab"></div><div class="stack"><div class="row between"><div><div class="eyebrow">Progress photo</div><div class="h2">${esc((c.pose || 'front')[0].toUpperCase() + (c.pose || 'front').slice(1))}</div></div>${c.ghost ? `<label class="tiny muted" style="display:flex;gap:6px;align-items:center">Outline<input type="range" min="0" max="70" value="${c.op ?? 35}" id="cam-op" style="width:90px"></label>` : ''}</div>
+    <div class="cam-box">${c.err ? `<p class="small" style="padding:16px">${esc(c.err)}</p>` : `<video id="cam-v" playsinline autoplay muted style="${c.facing === 'user' ? 'transform:scaleX(-1)' : ''}"></video>${c.ghost ? `<img id="cam-g" class="cam-ghost" src="${c.ghost}" alt="" style="opacity:${(c.op ?? 35) / 100}">` : ''}`}</div>
+    ${c.saving ? '<p class="small muted"><span class="spinner"></span> Saving</p>' : `<div class="row" style="gap:8px;flex-wrap:nowrap"><button class="btn" data-act="cam-flip" style="flex:1">Flip camera</button><button class="btn primary" data-act="cam-shot" style="flex:1" ${c.err ? 'disabled' : ''}>${ICON.photo} Take photo</button></div>
+    <label class="btn block ghost" for="cam-file">Or choose from your photos</label><input id="cam-file" type="file" accept="image/*" hidden data-file2="photo">`}
+    <p class="tiny muted">Tip: prop the phone at chest height, step back until your whole body fits, and line up with the outline.</p></div>`;
+}
+async function camStart() {
+  const c = S.ui.cam; stopCam();
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: c.facing || 'user', width: { ideal: 1440 }, height: { ideal: 1920 } }, audio: false });
+    c.stream = st; const v = $('#cam-v'); if (v) { v.srcObject = st; await v.play().catch(() => {}); }
+  } catch (e) { c.err = 'Camera is not available here. Use "choose from your photos" instead.'; render(); }
+}
+function stopCam() { const c = S.ui.cam; if (c?.stream) { c.stream.getTracks().forEach(t => t.stop()); c.stream = null; } }
+async function camSave(src) {
+  const c = S.ui.cam; c.saving = true; render();
+  try {
+    const full = await canvasB64(src, 1400, 0.82), thumb = await canvasB64(src, 220, 0.6);
+    await Photos.save(today(), c.pose || 'front', full, thumb);
+    stopCam(); S.ui.photos = { pose: c.pose }; S.ui.cam = null; closeSheet(); toast('Photo saved');
+  } catch (e) { c.saving = false; c.err = 'Could not save the photo. ' + (e?.message || ''); render(); }
+}
+function sheetCompare() {
+  const P = S.ui.photos, [a, b] = P.cmp || [];
+  return `<div class="grab"></div><div class="stack"><div class="eyebrow">Compare</div>
+    ${!a || !b ? '<p class="small muted"><span class="spinner"></span> Loading</p>' : `<div class="cmp" style="--x:${P.x ?? 50}%"><img src="${a.src}" alt="Earlier"><div class="cmp-top"><img src="${b.src}" alt="Later"></div><div class="cmp-line"></div></div>
+    <input type="range" min="0" max="100" value="${P.x ?? 50}" id="cmp-x" aria-label="Slide to compare" style="width:100%">
+    <div class="row between tiny muted"><span>${esc(prettyDate(a.date, { month: 'short', day: 'numeric', year: 'numeric' }))}</span><span>${esc(prettyDate(b.date, { month: 'short', day: 'numeric', year: 'numeric' }))}</span></div>
+    <div class="row" style="gap:8px"><button class="btn sm ghost danger" data-act="ph-del" data-v="${b.id}">Delete later photo</button></div>`}</div>`;
+}
+
+/* ============================================================
    RENDER + EVENTS
    ============================================================ */
 const TABS = [['today', 'Today'], ['train', 'Train'], ['food', 'Food'], ['progress', 'Progress'], ['coach', 'Coach']];
@@ -2996,8 +3354,10 @@ function render() {
       <main>${mainHtml}</main>
     </div></div>
     ${S.sheet ? `<div class="scrim" data-act="sheet-close-bg"><div class="sheet" role="dialog" aria-modal="true">${renderSheet()}</div></div>` : ''}
-    ${S.rest ? restPill() : ''}`;
+    ${S.rest ? restPill() : ''}
+    ${S.ui.pr ? `<div class="pr-pop" role="status" data-act="pr-close"><div class="pr-burst" aria-hidden="true">${Array.from({ length: 14 }, (_, k) => `<i style="--a:${k * 360 / 14}deg;--d:${(k % 3) * 60}ms"></i>`).join('')}</div><div class="pr-card"><div class="pr-ic">${ICON.trophy}</div><div class="eyebrow" style="color:var(--f)">New personal record</div><div class="h2" style="margin-top:2px">${esc(S.ui.pr.name)}</div><p class="small" style="margin-top:6px">${esc(S.ui.pr.msg)}</p></div></div>` : ''}`;
   window.scrollTo(0, keepScroll);
+  if (S.sheet?.type === 'cam' && S.ui.cam?.stream) { const v = $('#cam-v'); if (v && v.srcObject !== S.ui.cam.stream) { v.srcObject = S.ui.cam.stream; v.play().catch(() => {}); } }
   if (activeId) { const el = document.getElementById(activeId); if (el) { el.focus({ preventScroll: true }); try { if (selStart != null) el.setSelectionRange(selStart, selStart); } catch (e) {} } }
   const chat = $('#chat'); if (chat && S.ui.chatScroll) { chat.lastElementChild?.scrollIntoView({ block: 'end' }); S.ui.chatScroll = false; }
 }
@@ -3013,11 +3373,17 @@ function renderSheet() {
   if (s.type === 'editfood') return sheetEditFood();
   if (s.type === 'hotworx') return sheetHotworx();
   if (s.type === 'sport') return sheetSport();
+  if (s.type === 'travel') return sheetTravel();
+  if (s.type === 'order') return sheetOrder();
+  if (s.type === 'fridge') return sheetFridge();
+  if (s.type === 'cam') return sheetCam();
+  if (s.type === 'compare') return sheetCompare();
+  if (s.type === 'plates') return sheetPlates();
   return '';
 }
 function openSheet(s) { S.sheet = s; render(); }
 function startScan() { const v = $('#scan-video'); if (!v) return; LiveScan.start(v, code => { S.sheet.food.live = false; lookupBarcode(code); }, msg => { S.sheet.food.live = false; S.sheet.food.err = msg; render(); }); }
-function closeSheet() { LiveScan.stop(); S.sheet = null; S.ui.ci = null; render(); }
+function closeSheet() { LiveScan.stop(); try { stopCam(); } catch (e) {} S.sheet = null; S.ui.ci = null; render(); }
 
 /* ---------- rest timer ---------- */
 let restInt;
@@ -3055,7 +3421,9 @@ function setDone(i, j) {
   if (s.reps == null || s.reps === '') s.reps = typeof it.repTarget === 'number' ? it.repTarget : parseInt(it.reps) || 8;
   if (s.load == null || s.load === '') s.load = it.target ?? null;
   if (s.rir == null) s.rir = it.rir;
+  if ((s.load == null || s.load === '') && E.EXBYID[it.exId]?.bw) s.load = 0;
   s.done = true;
+  checkPR(it, s);
   const ex = E.EXBYID[it.exId] || { loc: it.loc, inc: E.placeOf(it.loc).inc };
   const next = it.sets[j + 1];
   if (it.strength && it.strength.type === 'pr' && j === 0) {
@@ -3072,6 +3440,19 @@ function setDone(i, j) {
   const pairNext = it.pair ? w.items.find((x, k) => k !== i && x.pair === it.pair) : null;
   startRest(pairNext ? 60 : (it.rest || 120));
   render();
+}
+/* Personal records: beat your best estimated max (or most reps on bodyweight moves) from past sessions. */
+function checkPR(it, s) {
+  const prev = E.bestOf(setsHistory()[it.exId]); if (!prev || !+s.reps) return;
+  const unit = E.unitOf(it.loc);
+  let msg = null, val = 0;
+  if (prev.kind === 'load' && +s.load > 0) { val = E.e1rm(+s.load, +s.reps, 0); if (val > prev.value + 0.5) msg = `${fmt(+s.load, s.load % 1 ? 1 : 0)} ${unit} for ${s.reps} reps beats your best. Your estimated max is now ${Math.round(val)} ${unit}, up from ${Math.round(prev.value)}.`; }
+  else if (prev.kind === 'reps' && !(+s.load > 0)) { val = +s.reps; if (val > prev.value) msg = `${s.reps} reps beats your best of ${prev.value}.`; }
+  if (!msg || (it.prBest && val <= it.prBest)) return;
+  it.prBest = val;
+  S.lib.prs = (S.lib.prs || []).concat({ exId: it.exId, name: it.name, date: today(), load: +s.load || 0, reps: +s.reps, unit }).slice(-200); saveLib();
+  S.ui.pr = { name: it.name, msg };
+  clearTimeout(window._prT); window._prT = setTimeout(() => { S.ui.pr = null; render(); }, 5000);
 }
 function readSetInputs(i, j) {
   const w = activeWorkout(); const s = w.items[i].sets[j];
@@ -3276,6 +3657,36 @@ document.addEventListener('click', async (ev) => {
     case 'plan-choice': { const d = day(today()); d.plan = { ...(d.plan || {}), choice: v || null }; saveDay(today()); render(); break; }
     case 'start-session': startSession(); break;
     case 'hx-open': openSheet({ type: 'hotworx' }); break;
+    case 'order-open': S.ui.order = {}; openSheet({ type: 'order' }); break;
+    case 'order-chain': { const o = S.ui.order; o.slug = v; o.items = null; o.photo = false; o.chain = (o.index || []).find(c => c.slug === v)?.chain; orderRun(); break; }
+    case 'order-back': { const o = S.ui.order; Object.assign(o, { slug: null, photo: false, picks: null, items: null, err: null, q: '' }); render(); break; }
+    case 'order-budget': { const o = S.ui.order; o.budget = Math.max(150, +($('#or-budget')?.value || o.budget)); if (o.slug) orderRun(); else render(); break; }
+    case 'order-log': { const o = S.ui.order, p = o.picks[+v]; logOrder(p.items, o.chain, p.est); closeSheet(); break; }
+    case 'order-one': { const o = S.ui.order; logOrder([o.items[+v]], o.chain, false); closeSheet(); break; }
+    case 'fridge-open': S.ui.fridge = S.ui.fridge || {}; openSheet({ type: 'fridge' }); break;
+    case 'fridge-go': fridgeRun(); break;
+    case 'fridge-log': { const m = S.ui.fridge.meals[+v]; addFood({ name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat, meal: defaultMeal(), source: 'describe' }); toast(`Logged ${m.name}`); closeSheet(); break; }
+    case 'ph-pose': { const P = S.ui.photos; P.pose = v; P.sel = []; render(); break; }
+    case 'ph-pick': { const P = S.ui.photos; P.sel = P.sel || []; P.sel = P.sel.includes(v) ? P.sel.filter(x => x !== v) : P.sel.concat(v).slice(-2); render(); break; }
+    case 'ph-compare': { const P = S.ui.photos; const ps = P.sel.map(id => P.list.find(x => x.id === id)).sort((a, b) => a.date < b.date ? -1 : 1); P.cmp = null; P.x = 50; openSheet({ type: 'compare' }); const full = await Promise.all(ps.map(x => Photos.full(x.id))); P.cmp = ps.map((x, k) => ({ ...x, src: full[k] })); render(); break; }
+    case 'ph-del': { if (!S.ui.phArm) { S.ui.phArm = true; el.textContent = 'Tap again to delete'; setTimeout(() => { S.ui.phArm = false; }, 4000); break; } S.ui.phArm = false; await Photos.del(v).catch(() => {}); S.ui.photos = { pose: S.ui.photos.pose }; closeSheet(); toast('Photo deleted'); break; }
+    case 'ph-cam': { const P = S.ui.photos || {}; const pose = P.pose || 'front'; const last = (P.list || []).filter(x => x.pose === pose).pop();
+      S.ui.cam = { pose, facing: 'user', op: 35 }; openSheet({ type: 'cam' }); camStart();
+      if (last) Photos.full(last.id).then(src => { if (S.ui.cam) { S.ui.cam.ghost = src; const v = $('#cam-v'); const st = S.ui.cam.stream; render(); const v2 = $('#cam-v'); if (v2 && st) { v2.srcObject = st; v2.play().catch(() => {}); } } }).catch(() => {});
+      break; }
+    case 'cam-flip': { const c = S.ui.cam; c.facing = c.facing === 'user' ? 'environment' : 'user'; render(); camStart(); break; }
+    case 'cam-shot': { const v = $('#cam-v'); if (v && v.videoWidth) camSave(v); break; }
+    case 'scan-rot': { S.ui.scanRot = ((S.ui.scanRot || 0) + 90) % 360; try { localStorage.setItem('fc:scanRot', S.ui.scanRot); } catch (e) {} const v = $('#scan-video'); if (v) v.style.transform = `rotate(${S.ui.scanRot}deg)`; break; }
+    case 'travel-open': openSheet({ type: 'travel' }); break;
+    case 'travel-bands': { const eq = new Set(S.profile.travelEquip || ['db', 'bench']); eq.has('bands') ? eq.delete('bands') : eq.add('bands'); S.profile.travelEquip = [...eq]; saveProfile(); render(); break; }
+    case 'travel-set': { const d = day(today()); const bands = (S.profile.travelEquip || []).includes('bands') ? ['bands'] : [];
+      if (v === 'full') d.plan = { ...(d.plan || {}), loc: (S.profile.locations || []).includes('gym') ? 'gym' : 'gym' };
+      else { S.profile.travelEquip = (v === 'room' ? [] : ['db', 'bench']).concat(bands); saveProfile(); d.plan = { ...(d.plan || {}), loc: 'hotel' }; }
+      saveDay(today()); S.brief = null; closeSheet(); toast(v === 'full' ? 'Gym workout' : 'Travel workout ready'); break; }
+    case 'plates-open': S.ui.plateLoad = null; openSheet({ type: 'plates', i: +el.dataset.i }); break;
+    case 'plates-bar': S.ui.plateLoad = +($('#pl-load')?.value || 0) || null; S.ui.bar = +v; render(); break;
+    case 'plates-use': { const it = activeWorkout().items[+el.dataset.i]; const val = +($('#pl-load')?.value || 0); const s = it.sets.find(x => !x.done); if (s && val) s.load = val; saveDay(today()); closeSheet(); break; }
+    case 'pr-close': S.ui.pr = null; render(); break;
     case 'sp-open': S.ui.sp = {}; openSheet({ type: 'sport' }); break;
     case 'sp-set': { const f = S.ui.sp; f[el.dataset.f] = el.dataset.f === 'k' || el.dataset.f === 'level' ? v : +v; if (el.dataset.f === 'k') f.min = E.SPORTBYK[v].min; render(); break; }
     case 'sp-log': { const f = S.ui.sp, sp = E.SPORTBYK[f.k]; const d = day(today()); d.workouts.push({ id: uid(), kind: 'sport', sport: f.k, level: f.level, dayName: sp.name, location: 'sport', minutes: f.min, done: true, startedAt: Date.now(), finishedAt: Date.now(), items: [] }); saveDay(today()); toast(`${sp.name} logged`); closeSheet(); break; }
@@ -3383,12 +3794,19 @@ document.addEventListener('click', async (ev) => {
 document.addEventListener('change', (ev) => {
   const el = ev.target;
   if (el.dataset.file) { const file = el.files?.[0]; if (file) handleFile(el.dataset.file, file); }
+  if (el.dataset.file2) { const file = el.files?.[0]; if (!file) return;
+    if (el.dataset.file2 === 'order') orderPhoto(file);
+    if (el.dataset.file2 === 'fridge') { const f = S.ui.fridge; f.text = $('#fr-text')?.value || f.text; shrinkImage(file).then(b => { f.image = b; if (f.preview) URL.revokeObjectURL(f.preview); f.preview = URL.createObjectURL(b); render(); }); }
+    if (el.dataset.file2 === 'photo') camSave(file); }
   if (el.id === 'ef-date' || el.id === 'ef-qty') { readEf(); render(); }
   if (el.dataset.lg) { readLg(); render(); }
   if (el.dataset.set) { const [i, j] = [+el.dataset.i, +el.dataset.j]; readSetInputs(i, j); saveDay(today()); }
 });
 document.addEventListener('input', (ev) => {
   const el = ev.target;
+  if (el.id === 'cam-op') { const g = $('#cam-g'); if (g) g.style.opacity = el.value / 100; if (S.ui.cam) S.ui.cam.op = +el.value; }
+  if (el.id === 'cmp-x') { const c = document.querySelector('.cmp'); if (c) c.style.setProperty('--x', el.value + '%'); S.ui.photos.x = +el.value; }
+  if (el.id === 'or-q') { S.ui.order.q = el.value; clearTimeout(window._orq); window._orq = setTimeout(() => { const pos = el.selectionStart; render(); const n = $('#or-q'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 250); }
   if (el.dataset.ob && S.ob) { S.ob.a[el.dataset.ob] = el.value; const btn = document.querySelector('[data-act="ob-next"]'); if (btn) btn.disabled = !obValid(S.ob.step, { ...S.ob.a, [el.dataset.ob]: el.value }); }
 });
 document.addEventListener('submit', (ev) => {
@@ -3436,7 +3854,7 @@ function captureFs() {
    BOOT
    ============================================================ */
 (async function boot() {
-  let sk = null; try { sk = localStorage.getItem('fc:skin'); } catch (e) {} applyTheme(SKIN_OLD[sk] || sk || 'auto');
+  let sk = null; try { sk = localStorage.getItem('fc:skin'); S.ui.scanRot = +(localStorage.getItem('fc:scanRot') || 0); } catch (e) {} applyTheme(SKIN_OLD[sk] || sk || 'auto');
   render();
   await Store.init();
   try {

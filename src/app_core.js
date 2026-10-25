@@ -14,6 +14,11 @@ function prettyDate(iso, opts = { weekday: 'long', month: 'short', day: 'numeric
 /* ---------- icons (inline, stroke) ---------- */
 const I = (d, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
 const ICON = {
+  plane: I('<path d="M10.5 13.5 3 11l1.5-1.5 7.5 1L16 6.5a2.1 2.1 0 0 1 3 3L15 13.5l1 7.5-1.5 1.5-2.5-7.5-3.5 3.5V21l-1.5 1-1-3-3-1 1-1.5h2.5z"/>'),
+  trophy: I('<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>'),
+  fridge: I('<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M5 10h14M9 6v2M9 13v3"/>'),
+  menu: I('<path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5"/>'),
+  photo: I('<path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/>'),
   today: I('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
   train: I('<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>'),
   food: I('<path d="M7 3v8a2 2 0 0 0 2 2v8M11 3v8a2 2 0 0 1-2 2M9 3v6M17 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"/>'),
@@ -165,8 +170,8 @@ function allWorkouts() {
 }
 function setsHistory() {
   const h = {};
-  allWorkouts().filter(w => w.done).forEach(w => (w.items || []).forEach(it => (it.sets || []).filter(s => s.done && s.load != null && s.reps).forEach(s => {
-    (h[it.exId] = h[it.exId] || []).push({ date: w.date, load: +s.load, reps: +s.reps, rir: s.rir == null ? 2 : +s.rir });
+  allWorkouts().filter(w => w.done).forEach(w => (w.items || []).forEach(it => (it.sets || []).filter(s => s.done && s.reps && (s.load != null || E.EXBYID[it.exId]?.bw)).forEach(s => {
+    (h[it.exId] = h[it.exId] || []).push({ date: w.date, load: +(s.load || 0), reps: +s.reps, rir: s.rir == null ? 2 : +s.rir });
   })));
   return h;
 }
@@ -364,12 +369,23 @@ const LiveScan = {
           let code = null;
           if (det) { try { const r = await det.detect(video); code = r?.[0]?.rawValue || null; } catch (e) {} }
           if (!code) {
-            // crop the middle band where the barcode sits
-            const vw = video.videoWidth, vh = video.videoHeight, c = document.createElement('canvas');
-            const cw = Math.min(900, vw), ch = Math.round(cw * 0.5); c.width = cw; c.height = ch;
-            const x = c.getContext('2d'); x.filter = 'grayscale(1) contrast(1.3)';
-            const sw = vw * 0.9, sh = sw * 0.5; x.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, cw, ch);
-            code = zxCanvas(Z, reader, c);
+            // Some phones (foldables especially) hand the browser a sideways camera picture.
+            // Read the middle of the frame both ways so the barcode is found however it arrives.
+            const vw = video.videoWidth, vh = video.videoHeight;
+            const band = (rot) => {
+              const c = document.createElement('canvas'); const x = c.getContext('2d');
+              const long = Math.min(vw, vh) * 0.95, short = long * 0.55;
+              const sw = rot ? short : long, sh = rot ? long : short;
+              const cw = 900, ch = Math.round(900 * short / long); c.width = cw; c.height = ch;
+              x.filter = 'grayscale(1) contrast(1.3)';
+              if (rot) { x.translate(cw / 2, ch / 2); x.rotate(Math.PI / 2); x.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, -ch / 2, -cw / 2, ch, cw); }
+              else x.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, cw, ch);
+              return zxCanvas(Z, reader, c);
+            };
+            code = band(this.flip) || band(!this.flip);
+            if (code) this.flip = !!this.flip;
+            this.n = (this.n || 0) + 1;
+            if (!code && this.n % 4 === 0) { const c = document.createElement('canvas'); const k = 1000 / Math.max(vw, vh); c.width = Math.round(vw * k); c.height = Math.round(vh * k); c.getContext('2d').drawImage(video, 0, 0, c.width, c.height); code = zxCanvas(Z, reader, c); }
           }
           if (code) { try { navigator.vibrate?.(60); } catch (e) {} this.stop(); return onCode(code); }
         }

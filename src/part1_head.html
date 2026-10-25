@@ -312,6 +312,33 @@ body{background-color:var(--bg);background-image:var(--texture);background-size:
 :root[data-skin="gilt"] .btn{text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:500}
 :root[data-skin="gilt"] .btn.primary{background:linear-gradient(180deg,#D9BD7A,#B8954A);color:#0A0A0C;border-color:transparent;box-shadow:0 0 0 1px rgba(201,169,97,.35),0 10px 24px -14px rgba(201,169,97,.6)}
 :root[data-skin="gilt"] .card{box-shadow:inset 0 1px 0 rgba(201,169,97,.12)}
+/* ---------- plates + personal records ---------- */
+.plate-vis{display:flex;align-items:center;gap:3px;height:96px;padding:0 6px;overflow:hidden}
+.pv-bar{width:64px;height:12px;border-radius:3px;background:linear-gradient(180deg,#c9ccd1,#8c9096)}
+.pv-plate{width:14px;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.pv-end{width:22px;height:16px;border-radius:3px;background:linear-gradient(180deg,#c9ccd1,#8c9096)}
+.pr-pop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(0,0,0,.35);animation:prFade .25s ease}
+.pr-card{position:relative;max-width:320px;margin:0 20px;padding:22px 20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);text-align:center;box-shadow:0 24px 60px -20px rgba(0,0,0,.6);animation:prPop .45s cubic-bezier(.2,1.4,.4,1)}
+.pr-ic{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--f) 18%,transparent);color:var(--f)}
+.pr-ic svg{width:28px;height:28px}
+.pr-burst{position:absolute;width:0;height:0}
+.pr-burst i{position:absolute;width:8px;height:8px;border-radius:2px;background:var(--f);transform:rotate(var(--a)) translateY(0);opacity:0;animation:prBurst .9s ease-out var(--d) forwards}
+.pr-burst i:nth-child(3n){background:var(--p)}.pr-burst i:nth-child(3n+1){background:var(--c)}
+@keyframes prBurst{0%{opacity:1;transform:rotate(var(--a)) translateY(0)}100%{opacity:0;transform:rotate(var(--a)) translateY(-170px) rotate(200deg)}}
+@keyframes prPop{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes prFade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.pr-card,.pr-burst i,.pr-pop{animation:none}.pr-burst{display:none}}
+/* ---------- progress photos ---------- */
+.ph-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.ph-th{flex:none;width:84px;padding:0;border:2px solid transparent;border-radius:12px;background:var(--surface2);overflow:hidden;position:relative}
+.ph-th[aria-pressed="true"]{border-color:var(--c)}
+.ph-th img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover}
+.ph-th span{position:absolute;left:0;right:0;bottom:0;padding:3px 0;font-size:11px;font-weight:600;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+.cam-box,.cmp{position:relative;width:100%;max-width:420px;margin:0 auto;aspect-ratio:3/4;max-height:58vh;border-radius:var(--r-sm);overflow:hidden;background:#000}
+.cam-box video,.cam-ghost,.cmp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam-ghost{pointer-events:none;filter:grayscale(1) contrast(1.2)}
+.cmp-top{position:absolute;inset:0;clip-path:inset(0 0 0 var(--x))}
+.cmp-line{position:absolute;top:0;bottom:0;left:var(--x);width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 /* ---------- premium touches ---------- */
 .btn,.chip,.add,.iconbtn,.seg button,.scale button,.set .ok,.tabs button{transition:transform .12s ease,background-color .15s,color .15s,box-shadow .15s}
 .btn:active,.chip:active,.add:active,.iconbtn:active,.set .ok:active{transform:scale(.96)}

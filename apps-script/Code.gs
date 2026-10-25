@@ -55,6 +55,10 @@ function doPost(e) {
     if (a === 'ouraStatus') return out_({ ok: true, connected: !!ouraGet_(req.token) });
     if (a === 'ouraDisconnect') return out_(ouraDisconnect_(req.token));
     if (a === 'ouraDays') return out_(ouraDays_(req));
+    if (a === 'photoSave') return out_(photoSave_(req));
+    if (a === 'photoList') return out_(photoList_(req.token));
+    if (a === 'photoGet') return out_(photoGet_(req));
+    if (a === 'photoDelete') return out_(photoDelete_(req));
     return out_({ ok: false, code: 'bad_action', error: 'Unknown action.' });
   } catch (err) {
     return out_({ ok: false, code: 'server_error', error: String(err && err.message || err) });
@@ -136,6 +140,7 @@ function saveMany_(token, items) {
 function wipe_(token) {
   const lock = LockService.getScriptLock(); lock.waitLock(25000);
   try { const sh = sheet_('data'); rows_(token).map(x => x.row).sort((a, b) => b - a).forEach(r => sh.deleteRow(r)); } finally { lock.releaseLock(); }
+  try { photoRows_(token).sort((a, b) => b.row - a.row).forEach(r => photoDelete_({ token: token, id: r.id })); } catch (e) {}
   return { ok: true };
 }
 
@@ -266,5 +271,49 @@ function ouraDays_(req) {
 }
 function ouraDisconnect_(token) {
   const cur = ouraGet_(token); if (cur) ouraSheet_().getRange(cur.row, 1, 1, 5).clearContent();
+  return { ok: true };
+}
+
+
+/* ---------- progress photos (private: saved to the owner's Google Drive, never shared) ---------- */
+function photoFolder_(token) {
+  const props = PropertiesService.getScriptProperties();
+  let rootId = props.getProperty('PHOTO_FOLDER_ID'); let root = null;
+  if (rootId) { try { root = DriveApp.getFolderById(rootId); } catch (e) { root = null; } }
+  if (!root) { root = DriveApp.createFolder('Spotter progress photos'); props.setProperty('PHOTO_FOLDER_ID', root.getId()); }
+  const name = token.slice(0, 10);
+  const it = root.getFoldersByName(name);
+  return it.hasNext() ? it.next() : root.createFolder(name);
+}
+function photoSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName('photos');
+  if (!sh) { sh = ss.insertSheet('photos'); sh.getRange(1, 1, 1, 6).setValues([['token', 'id', 'date', 'pose', 'fileId', 'thumb']]); sh.setFrozenRows(1); sh.hideSheet(); }
+  return sh;
+}
+function photoSave_(req) {
+  const full = String(req.full || ''), thumb = String(req.thumb || '');
+  if (!full || full.length > 4500000) return { ok: false, error: 'Photo too large.' };
+  if (thumb.length > 45000) return { ok: false, error: 'Thumbnail too large.' };
+  const date = String(req.date || '').slice(0, 10), pose = String(req.pose || 'front').slice(0, 12);
+  const blob = Utilities.newBlob(Utilities.base64Decode(full), 'image/jpeg', date + '_' + pose + '.jpg');
+  const file = photoFolder_(req.token).createFile(blob);
+  const id = Utilities.getUuid().slice(0, 12);
+  photoSheet_().appendRow([req.token, id, date, pose, file.getId(), thumb]);
+  return { ok: true, id: id };
+}
+function photoRows_(token) {
+  const sh = photoSheet_(); const n = sh.getLastRow(); if (n < 2) return [];
+  return sh.getRange(2, 1, n - 1, 6).getDisplayValues().map((r, i) => ({ row: i + 2, token: r[0], id: r[1], date: r[2], pose: r[3], fileId: r[4], thumb: r[5] })).filter(r => r.token === token);
+}
+function photoList_(token) { return { ok: true, photos: photoRows_(token).map(r => ({ id: r.id, date: r.date, pose: r.pose, thumb: r.thumb })) }; }
+function photoGet_(req) {
+  const r = photoRows_(req.token).filter(x => x.id === req.id)[0]; if (!r) return { ok: false, error: 'Not found.' };
+  return { ok: true, full: Utilities.base64Encode(DriveApp.getFileById(r.fileId).getBlob().getBytes()) };
+}
+function photoDelete_(req) {
+  const r = photoRows_(req.token).filter(x => x.id === req.id)[0]; if (!r) return { ok: true };
+  try { DriveApp.getFileById(r.fileId).setTrashed(true); } catch (e) {}
+  photoSheet_().deleteRow(r.row);
   return { ok: true };
 }

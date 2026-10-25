@@ -2,7 +2,7 @@
    VIEWS
    ============================================================ */
 const LOC_LABEL = new Proxy({ off: 'Rest' }, { get: (o, k) => o[k] || (E.PLACES[k] ? E.PLACES[k].name : k === 'sport' ? 'Sport' : String(k || '')) });
-const haveEquip = e => { const h = new Set(S.profile?.homeEquip || []); return (e.need || []).every(k => h.has(k)); };
+const haveEquip = (e, loc) => { const h = new Set(E.equipFor(S.profile || {}, loc || 'home')); return (e.need || []).every(k => h.has(k)); };
 
 function plateBars(t, tot) {
   const rows = [
@@ -69,7 +69,7 @@ function viewToday() {
       <p class="small muted">Logged at ${LOC_LABEL[w.location]}. The next session picks up from here.</p>
       <div class="row" style="margin-top:10px"><button class="btn sm" data-act="go" data-v="train">View log</button></div></div>`;
   } else {
-    const locSeg = `<div class="chips" role="group" aria-label="Where are you training">${(p.locations || ['gym']).concat('off').map(l => `<button class="chip" data-act="plan-loc" data-v="${l}" aria-pressed="${loc === l}">${l === 'gym' || l === 'hotworx' ? ICON.gym.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"') : E.PLACES[l] ? ICON.home.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"') : ICON.bed.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"')} ${LOC_LABEL[l]}</button>`).join('')}</div>`;
+    const locSeg = `<div class="chips" role="group" aria-label="Where are you training">${(p.locations || ['gym']).concat(['hotel', 'off']).map(l => `<button class="chip" data-act="${l === 'hotel' ? 'travel-open' : 'plan-loc'}" data-v="${l}" aria-pressed="${loc === l}">${l === 'hotel' ? ICON.plane.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"') : l === 'gym' || l === 'hotworx' ? ICON.gym.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"') : E.PLACES[l] ? ICON.home.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"') : ICON.bed.replace('<svg', '<svg width="15" height="15" style="vertical-align:-3px"')} ${l === 'hotel' ? (loc === 'hotel' ? 'Traveling' : 'Traveling?') : LOC_LABEL[l]}</button>`).join('')}</div>`;
     const minSeg = `<div class="chips">${[30, 45, 60, 75].map(m => `<button class="chip" data-act="plan-min" data-v="${m}" aria-pressed="${+min === m}">${m} min</button>`).join('')}</div>`;
     let inner = '';
     if (plan.type === 'train') {
@@ -175,7 +175,7 @@ function exerciseBlock(w, it, i) {
     <div class="ex-h"><div class="ex-tag ${it.main ? 'main' : it.pair ? 'pair' : ''}">${tag}</div>
       <div style="flex:1;min-width:0"><div class="ex-name">${esc(it.name)}</div>
         <div class="ex-meta">${E.MUSCLES[it.muscle] || ''} · ${it.sets.length} × ${esc(it.reps)} · ${it.rir ? 'stop ' + it.rir + ' rep' + (it.rir > 1 ? 's' : '') + ' early' : 'go until you can\'t do another'}${E.placeOf(it.loc).machine && ex.mode ? ` · <span class="pill" style="padding:1px 7px">${ex.mode} mode</span>` : ''}</div>
-        ${loadLabel({ ...ex, loc: it.loc }, it.target)}
+        <div class="row" style="gap:8px;align-items:center">${loadLabel({ ...ex, loc: it.loc }, it.target)}${E.isBarbell(ex) && E.unitOf(it.loc) === 'lb' ? `<button class="btn sm ghost" data-act="plates-open" data-i="${i}">Plates</button>` : ''}</div>
         ${it.cue ? `<div class="tiny muted" style="margin-top:5px">${esc(it.cue)}</div>` : ''}
         ${it.basis ? `<div class="basis">${esc(it.basis)}</div>` : ''}
       </div>
@@ -197,11 +197,11 @@ function exerciseBlock(w, it, i) {
 
 function sheetSwap(i) {
   const w = day(today()).workouts.find(x => !x.done); const it = w.items[i];
-  const fits = e => !e.mainOnly && haveEquip(e) && (e.m === it.muscle || (e.sec || []).includes(it.muscle)) && e.id !== it.exId;
+  const fits = e => !e.mainOnly && haveEquip(e, e.loc === 'home' && w.location === 'hotel' ? 'hotel' : 'home') && (e.m === it.muscle || (e.sec || []).includes(it.muscle)) && e.id !== it.exId;
   const srt = (a, b) => (a.m === it.muscle ? 0 : 1) - (b.m === it.muscle ? 0 : 1) || a.tier - b.tier;
   const mine = new Set([w.location, ...(S.profile.locations || [])]);
-  const alts = E.EX.filter(e => e.loc === w.location && fits(e)).sort(srt);
-  const other = E.EX.filter(e => e.loc !== w.location && (mine.has(e.loc) || e.loc === 'mine') && fits(e)).sort(srt);
+  const alts = E.EX.filter(e => e.loc === E.libOf(w.location) && fits(e)).sort(srt);
+  const other = E.EX.filter(e => e.loc !== E.libOf(w.location) && (mine.has(e.loc) || e.loc === 'mine') && fits(e)).sort(srt);
   return `<div class="grab"></div><div class="stack"><div><div class="eyebrow">Swap</div><div class="h2">${esc(it.name)}</div><p class="small muted">Pick a replacement for ${E.MUSCLES[it.muscle]}. "Keep" makes it the default for this slot from now on.</p></div>
     <div class="list">${alts.map(e => `<div class="row between" style="padding:10px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${esc(e.name)} ${e.tier === 1 ? '<span class="pill good">Best pick</span>' : ''}</div><div class="tiny muted">${esc(e.cue)}</div></div><div class="row" style="flex-wrap:nowrap;gap:6px"><button class="btn sm" data-act="swap-do" data-i="${i}" data-v="${e.id}">Today</button><button class="btn sm primary" data-act="swap-do" data-i="${i}" data-v="${e.id}" data-keep="1">Keep</button></div></div>`).join('') || '<p class="muted">No alternatives at this location.</p>'}</div>
     ${other.length ? `<details class="acc"><summary>With other equipment you have ${ICON.chev.replace('<svg', '<svg width="16" height="16"')}</summary><div class="list">${other.map(e => `<div class="row between" style="padding:10px 0;flex-wrap:nowrap"><div style="min-width:0"><div style="font-weight:500">${esc(e.name)}</div><div class="tiny muted">${esc(e.loc === 'mine' ? 'Your exercise' : E.placeOf(e.loc).full)}</div></div><div class="row" style="flex-wrap:nowrap;gap:6px"><button class="btn sm" data-act="swap-do" data-i="${i}" data-v="${e.id}">Today</button><button class="btn sm primary" data-act="swap-do" data-i="${i}" data-v="${e.id}" data-keep="1">Keep</button></div></div>`).join('')}</div></details>` : ''}
@@ -219,7 +219,7 @@ function myExForm(mode, i, muscle) {
 function sheetAddExercise() {
   const w = day(today()).workouts.find(x => !x.done);
   const mine = new Set([w.location, ...(S.profile.locations || []), 'mine']);
-  const list = E.EX.filter(e => (w.free ? mine.has(e.loc) : (e.loc === w.location || e.loc === 'mine')) && !e.mainOnly && haveEquip(e));
+  const list = E.EX.filter(e => (w.free ? (mine.has(e.loc) || e.loc === E.libOf(w.location)) : (e.loc === E.libOf(w.location) || e.loc === 'mine')) && !e.mainOnly && haveEquip(e, w.location));
   return `<div class="grab"></div><div class="stack"><div class="h2">Add exercise</div><div class="list">${Object.keys(E.MUSCLES).map(m => {
     const xs = list.filter(e => e.m === m); if (!xs.length) return '';
     return `<details class="acc"><summary>${E.MUSCLES[m]} ${ICON.chev.replace('<svg', '<svg width="16" height="16"')}</summary><div>${xs.map(e => `<button class="btn sm" style="margin:3px" data-act="add-ex-do" data-v="${e.id}">${esc(e.name)}</button>`).join('')}</div></details>`;
@@ -246,6 +246,7 @@ function viewFood() {
         ${tgt.note ? `<p class="tiny muted" style="margin-top:10px">${esc(tgt.note)}</p>` : ''}</div>
         ${logBox()}
         ${(S.profile.supps || []).length ? `<div class="card"><div class="card-h"><div class="eyebrow">Supplements</div><div class="tiny muted">${(d.supps || []).filter(id => S.profile.supps.some(x => x.id === id)).length} of ${S.profile.supps.length} taken</div></div><div class="chips">${S.profile.supps.map(x => `<button class="chip" data-act="sup-take" data-v="${x.id}" aria-pressed="${(d.supps || []).includes(x.id)}">${esc(x.name)}${x.kcal ? ` <span style="opacity:.7">${fmt(x.kcal)} kcal</span>` : ''}</button>`).join('')}</div><p class="tiny muted" style="margin-top:8px">Tap what you took. Anything with calories is added to your day. Change your list in Settings under Profile and plan.</p></div>` : ''}
+        <div class="card"><div class="eyebrow" style="margin-bottom:10px">Need an idea?</div><div class="adds" style="grid-template-columns:1fr 1fr">${add('order-open', ICON.menu, 'Eating out')}${add('fridge-open', ICON.fridge, 'From my fridge', !ai)}</div></div>
         <div class="card"><div class="eyebrow" style="margin-bottom:10px">Other ways to add</div>
           <div class="adds" style="grid-template-columns:repeat(3,1fr)">${add('food-search', ICON.food, 'Search')}${add('food-barcode', ICON.barcode, 'Barcode')}${add('food-recipes', ICON.label.replace('M8 7h8', 'M8 7h8'), 'Recipes')}${add('food-photo', ICON.camera, 'Photo', !ai || !S.sampleImages)}${add('food-label', ICON.label, 'Label', !ai || !S.sampleImages)}${add('food-quick', ICON.plus, 'Quick')}</div>
           ${!ai ? '<p class="tiny muted" style="margin-top:8px">Photo, label and describe use Claude. Allow Claude for this page from the artifact menu to turn them on.</p>' : ''}
@@ -280,7 +281,7 @@ function sheetFood() {
       ${f.preview ? `<img src="${f.preview}" alt="Label photo" style="border-radius:12px;max-height:220px;object-fit:contain;width:100%">` : ''}
       <label class="f">Product name (optional)<input class="inp" id="fs-note" data-fs="note" value="${esc(f.note || '')}"></label>
       <button class="btn block primary" data-act="fs-readlabel" ${f.image ? '' : 'disabled'}>${ICON.spark} Read label</button>`;
-    if (kind === 'barcode') inner = `${f.live ? `<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3"><video id="scan-video" muted playsinline style="width:100%;height:100%;object-fit:cover"></video><div style="position:absolute;left:5%;right:5%;top:28%;bottom:28%;border:2px solid rgba(255,255,255,.85);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.35)"></div></div><p class="small muted">Hold the barcode inside the box. It reads on its own.</p><button class="btn block" data-act="scan-stop">Stop camera</button>`
+    if (kind === 'barcode') inner = `${f.live ? `<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:1/1;max-height:62vh;margin:0 auto;width:100%"><video id="scan-video" muted playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:rotate(${S.ui.scanRot || 0}deg)"></video><div style="position:absolute;left:5%;right:5%;top:28%;bottom:28%;border:2px solid rgba(255,255,255,.85);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.35)"></div></div><p class="small muted">Hold the barcode inside the box, about 5 inches away. It reads on its own, either direction.</p><div class="row" style="gap:8px;flex-wrap:nowrap"><button class="btn" style="flex:1" data-act="scan-rot">Picture sideways? Rotate</button><button class="btn" style="flex:1" data-act="scan-stop">Stop camera</button></div>`
         : `${LiveScan.supported() ? `<button class="btn block primary" data-act="scan-live">${ICON.barcode} Scan with camera</button>` : ''}<p class="small muted">Over 400,000 US products are built in. Products not in the database ask for one label photo, then they are saved.</p>`}
       <label class="btn block ${LiveScan.supported() ? '' : 'primary'}" for="fs-file">${ICON.camera} Photograph barcode</label><input id="fs-file" type="file" accept="image/*" hidden data-file="barcode">
       <label class="f">Or type the number<input class="inp" id="fs-code" data-fs="code" inputmode="numeric" value="${esc(f.code || '')}"></label>
@@ -357,7 +358,7 @@ function viewProgress() {
   const hist = setsHistory();
   const top = Object.entries(hist).sort((a, b) => b[1].length - a[1].length).slice(0, 6);
   const rateGoal = p.goal === 'fatloss' ? -(p.weightLb * T.ratePct / 100) : null;
-  return `<div class="stack"><div style="padding-top:6px"><div class="eyebrow">Last 60 days</div><h1 class="h-display h1" style="margin-top:4px">Progress</h1></div>
+  return `<div class="stack"><div style="padding-top:6px"><div class="eyebrow">Last 60 days</div><h1 class="h-display h1" style="margin-top:4px">Progress</h1></div>${photosCard()}
     <div class="tiles">
       <div class="tile"><div class="k">Average weight</div><div class="v num">${lastT ? fmt(lastT, 1) : '–'}<span class="small muted"> lb</span></div></div>
       <div class="tile"><div class="k">7-day change</div><div class="v num" style="color:${rate == null ? 'var(--ink)' : (p.goal === 'fatloss' ? (rate < 0 ? 'var(--good)' : 'var(--warn)') : 'var(--ink)')}">${rate == null ? '–' : (rate > 0 ? '+' : '') + fmt(rate, 2)}</div><div class="tiny muted">${rateGoal ? 'target ' + fmt(rateGoal, 1) + '/wk' : ''}</div></div>
@@ -477,6 +478,31 @@ function sheetEditFood() {
     <p class="tiny muted">Change the amount to scale everything, or type exact numbers.</p>
     <div class="row"><button class="btn ghost danger" data-act="ef-del" data-armed="${S.ui.efArm ? 1 : 0}">${S.ui.efArm ? 'Tap again to delete' : 'Delete'}</button><button class="btn" data-act="ef-dup">Log again today</button><button class="btn primary" style="flex:1" data-act="ef-save">Save</button></div>
   </div>`;
+}
+
+function sheetTravel() {
+  const p = S.profile, eq = new Set(p.travelEquip || ['db', 'bench']);
+  const opt = (v, t, s) => `<button class="add" style="text-align:left;align-items:flex-start;padding:14px" data-act="travel-set" data-v="${v}"><b>${t}</b><span class="tiny muted" style="font-weight:400">${s}</span></button>`;
+  return `<div class="grab"></div><div class="stack"><div class="h2">Traveling</div><p class="small muted">Pick what you have and today's workout switches to match. Your regular plan stays the same.</p>
+    <div class="stack" style="gap:8px">${opt('room', 'Hotel room', 'No equipment. Push-ups, split squats, table rows and more.')}${opt('gym', 'Hotel gym', 'Dumbbells and a bench, the usual hotel setup.')}${opt('full', 'Real gym nearby', 'Use your normal gym workout.')}</div>
+    <div class="chips"><button class="chip" data-act="travel-bands" aria-pressed="${eq.has('bands')}">I packed resistance bands</button></div></div>`;
+}
+function sheetPlates() {
+  const w = activeWorkout(), it = w?.items[S.sheet.i]; if (!it) return '';
+  const bar = +(S.ui.bar || 45);
+  const s = it.sets.find(x => !x.done) || it.sets[it.sets.length - 1];
+  const total = +(S.ui.plateLoad ?? s?.load ?? it.target ?? 135);
+  const r = E.platesFor(total, bar);
+  const col = { 45: '#2F6FE0', 35: '#E0B020', 25: '#2FA35A', 10: '#E6E6E6', 5: '#D9473B', 2.5: '#8A8F96' };
+  const ht = { 45: 86, 35: 76, 25: 66, 10: 50, 5: 40, 2.5: 32 };
+  return `<div class="grab"></div><div class="stack"><div><div class="eyebrow">Plates</div><div class="h2">${esc(it.name)}</div></div>
+    <div class="row" style="flex-wrap:nowrap;gap:10px;align-items:end"><label class="f" style="flex:1">Total weight (lb)<input class="inp" id="pl-load" data-act-input="plates" inputmode="decimal" type="number" value="${total}"></label>
+    <div class="seg" style="flex:none">${[45, 35, 15].map(b => `<button type="button" data-act="plates-bar" data-v="${b}" aria-pressed="${bar === b}">${b} lb bar</button>`).join('')}</div></div>
+    ${total < bar ? `<p class="small" style="color:var(--warn)">That is less than the bar. Use a lighter bar or dumbbells.</p>` : `
+    <div class="plate-vis" aria-hidden="true"><div class="pv-bar"></div>${r.plates.map(p => `<div class="pv-plate" style="height:${ht[p]}px;background:${col[p]}"></div>`).join('')}<div class="pv-end"></div></div>
+    <p style="font-size:18px;font-weight:600">${r.plates.length ? 'Each side: ' + Object.entries(r.plates.reduce((m, p) => (m[p] = (m[p] || 0) + 1, m), {})).sort((a, b) => b[0] - a[0]).map(([p, n]) => `${n} × ${p}`).join(' + ') : 'Just the bar'}</p>
+    ${r.leftover ? `<p class="small muted">With standard plates the closest is ${total - r.leftover * 2} lb. You would need ${r.leftover} lb more on each side.</p>` : ''}`}
+    <button class="btn block primary" data-act="plates-use" data-i="${S.sheet.i}">Use ${total} lb for my next set</button></div>`;
 }
 
 function sheetSport() {
