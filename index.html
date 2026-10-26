@@ -1549,7 +1549,7 @@ const Api = {
       if (opts.images) { const list = opts.images instanceof Blob ? [opts.images] : [...opts.images]; images = await Promise.all(list.map(async b => ({ type: b.type || 'image/jpeg', data: await this.blobToB64(b) }))); }
       const r = await this.call('ai', { messages, images, tier: opts.modelTier || 'default', json }, 120000);
       if (opts.onText) opts.onText({ text: r.text, delta: r.text });
-      if (json) { try { return JSON.parse(String(r.text).replace(/^```(?:json)?\s*|\s*```$/g, '').trim()); } catch (e) { throw { code: 'invalid_json', text: r.text }; } }
+      if (json) { const t = String(r.text).replace(/^```(?:json)?\s*|\s*```$/g, '').trim(); try { return JSON.parse(t); } catch (e) { const i = t.indexOf('{'), j = t.lastIndexOf('}'); try { if (i >= 0 && j > i) return JSON.parse(t.slice(i, j + 1)); } catch (e2) {} throw { code: 'invalid_json', text: r.text }; } }
       return { text: r.text, truncated: false };
     };
     const s = (input, opts) => run(input, opts, false);
@@ -2866,6 +2866,19 @@ function servingsFor(row, it) {
   if (it.grams && sq) return +(it.grams / sq).toFixed(2);
   return +(it.qty || 1).toFixed(2);
 }
+/* Restaurant rows are one menu item each. A count like "10 chips" or "1.5 scoops" is converted with
+   the gram estimate (or, failing that, Claude's calorie estimate) instead of being read as 10 orders. */
+function restServings(row, it) {
+  const u = String(it.unit || '').toLowerCase(), q = +it.qty || 1;
+  const hh = String(row.hh || '').toLowerCase();
+  const sameUnit = (u === 'serving' || u === 'scoop' || u === '' || hh.includes(u.replace(/s$/, ''))) ;
+  let s = null;
+  if (sameUnit && q <= 4) s = q;
+  else if (it.grams && +row.sq > 0 && row.su === 'g') s = it.grams / +row.sq;
+  else if (it.est?.kcal && row.kcal > 0) s = +it.est.kcal / row.kcal;
+  else s = q;
+  return Math.max(0.05, +(Math.round(s * 20) / 20).toFixed(2));
+}
 function scaleRow(row, servings) { return { kcal: row.kcal * servings, protein: row.protein * servings, carbs: row.carbs * servings, fat: row.fat * servings, fiber: (row.fiber || 0) * servings }; }
 function titleCase(s) { return String(s || '').toLowerCase().replace(/\b([a-z])/g, c => c.toUpperCase()).replace(/\s+/g, ' ').trim(); }
 function rowLabel(r) { const n = [...new Set(titleCase(r.name).replace(/,\s*$/, '').split(/,\s*/))].join(', '); return r.brand && !n.toLowerCase().includes(r.brand.toLowerCase()) ? `${titleCase(r.brand)} ${n}` : n; }
@@ -2907,14 +2920,21 @@ For each food return:
 - "brand": the brand or chain if named, else ""
 - "qty": the number eaten, "unit": one of g, oz, lb, ml, floz, cup, tbsp, tsp, serving, bottle, can, bar, scoop, piece, slice, large, medium, small
 - "grams": your best estimate of the total grams (or ml) eaten
-- "est": your own estimate for the whole amount {"kcal","protein","carbs","fat","fiber"}, used only if the database has no match
+- "est": your own estimate for the whole amount {"kcal","protein","carbs","fat","fiber"} as whole numbers, used only if the database has no match
+- Count exactly what the user said. "10 chips" is ten individual chips (about 35 g), not ten bags; "6 fries" is six fries; "3 wings" is three wings. Only count orders when they say bag, order, side, box or a size.
+- Build-your-own chains (Chipotle, Qdoba, Cava, Subway): list each component separately (rice, each protein, beans, each salsa, cheese, queso) with the chain as brand; a "scoop" is one standard serving, so "1.5 scoops rice" is qty 1.5, unit "scoop". Mild salsa is fresh tomato salsa, medium is tomatillo-green chili, hot is tomatillo-red chili.
 - "restaurant": true for restaurant or fast-food items; then "brand" is the chain (e.g. "Chick-fil-A") and "query" is the menu item's name as the chain lists it, with size (e.g. "spicy chicken sandwich", "waffle potato fries medium")
 - Split restaurant meals into the separately listed menu items (sandwich, fries, drink, sauce)
 Count cooking fat (butter, oil) as its own item when the user mentions it.
-Return only JSON: {"items":[...]}
+Keep it compact: no extra fields, no explanations. Return only JSON: {"items":[...]}
 
 Food log: ${text}`;
-  return await S.sample.json(prompt, { modelTier: 'quick' });
+  try { return await S.sample.json(prompt, { modelTier: 'quick' }); }
+  catch (e) {
+    if (e?.code !== 'invalid_json') throw e;
+    // long meals can run past the reply limit: ask again for a leaner answer on the stronger model
+    return await S.sample.json(prompt.replace('- "text": the phrase it came from\n', '') + '\nUse short query strings and leave out "text".', { modelTier: 'default' });
+  }
 }
 
 /** Resolve parsed items against the database. Branded items need the brand; generic items prefer the generic set. */
@@ -2926,13 +2946,16 @@ async function resolveItems(parsed) {
     if (it.restaurant) {
       // chain items: use the chain's published numbers when the chain matches, else Claude's estimate
       const bt = FoodDB.toks(it.brand || '');
-      const k = res.cands.findIndex(c => c.db === 'r' && bt.length && bt.every(t => FoodDB.toks(c.brand).includes(t)));
+      const okc = c => c.db === 'r' && bt.length && bt.every(t => FoodDB.toks(c.brand).includes(t));
+      const kidsAsked = /\bkid/i.test(it.query + ' ' + (it.text || ''));
+      let k = res.cands.findIndex(c => okc(c) && (kidsAsked || !/\bkid/i.test(c.name)));
+      if (k < 0) k = res.cands.findIndex(okc);
       res.pick = k;
     } else {
       const ok = res.cands.findIndex(c => (it.brand ? true : c.db === 'g'));
       res.pick = it.brand ? (res.cands.length ? 0 : -1) : (hasG && ok >= 0 ? ok : -1);
     }
-    res.servings = res.pick >= 0 ? servingsFor(res.cands[res.pick], res) : 1;
+    res.servings = res.pick >= 0 ? (res.restaurant && res.cands[res.pick].db === 'r' ? restServings(res.cands[res.pick], res) : servingsFor(res.cands[res.pick], res)) : 1;
     return res;
   }));
 }

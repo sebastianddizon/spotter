@@ -161,7 +161,7 @@ function ai_(req) {
     const last = msgs[msgs.length - 1];
     last.content = req.images.slice(0, 4).map(im => ({ type: 'image', source: { type: 'base64', media_type: im.type || 'image/jpeg', data: im.data } })).concat([{ type: 'text', text: last.content }]);
   }
-  const body = { model: model, max_tokens: req.json ? 1500 : 900, messages: msgs };
+  const body = { model: model, max_tokens: req.json ? 4000 : 900, messages: msgs };
   if (req.json) body.system = 'Reply with a single JSON value only. No prose, no code fences.';
   const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
     method: 'post', contentType: 'application/json', muteHttpExceptions: true,

@@ -45,7 +45,7 @@ const Api = {
       if (opts.images) { const list = opts.images instanceof Blob ? [opts.images] : [...opts.images]; images = await Promise.all(list.map(async b => ({ type: b.type || 'image/jpeg', data: await this.blobToB64(b) }))); }
       const r = await this.call('ai', { messages, images, tier: opts.modelTier || 'default', json }, 120000);
       if (opts.onText) opts.onText({ text: r.text, delta: r.text });
-      if (json) { try { return JSON.parse(String(r.text).replace(/^```(?:json)?\s*|\s*```$/g, '').trim()); } catch (e) { throw { code: 'invalid_json', text: r.text }; } }
+      if (json) { const t = String(r.text).replace(/^```(?:json)?\s*|\s*```$/g, '').trim(); try { return JSON.parse(t); } catch (e) { const i = t.indexOf('{'), j = t.lastIndexOf('}'); try { if (i >= 0 && j > i) return JSON.parse(t.slice(i, j + 1)); } catch (e2) {} throw { code: 'invalid_json', text: r.text }; } }
       return { text: r.text, truncated: false };
     };
     const s = (input, opts) => run(input, opts, false);
