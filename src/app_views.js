@@ -79,10 +79,11 @@ function viewToday() {
     } else if (plan.type === 'recovery') {
       inner = `<p style="margin-top:8px">25 to 40 minutes of easy walking on the treadmill, then 10 minutes of mobility. ${esc(prog.days[plan.dayIndex].name)} moves to your next session.</p><button class="btn block" style="margin-top:10px" data-act="plan-choice" data-v="">Train light instead</button>`;
     } else {
-      inner = `<p style="margin-top:8px" class="muted">Rest day. Steps and protein still count. Your next session is ${esc(prog.days[E.nextDayIndex(prog, allWorkouts(), t)].name)}.</p>${plan.condWeek < 2 ? `<button class="btn block" style="margin-top:10px" data-act="log-cond">${ICON.walk} Log 20 min conditioning</button>` : ''}`;
+      inner = `<p style="margin-top:8px" class="muted">Rest day. Steps and protein still count. Your next session is ${esc(prog.days[E.nextDayIndex(prog, allWorkouts(), t)].name)}.</p>`;
     }
     const hxBtn = (p.locations || []).includes('hotworx') ? `<button class="btn block ghost" style="margin-top:8px" data-act="hx-open">${ICON.bolt} Log a HOTWORX sauna session</button>` : '';
-    const spBtn = (p.sports || []).some(x => x.k !== 'hotworx') ? `<button class="btn block ghost" style="margin-top:8px" data-act="sp-open">${ICON.bolt} Log ${esc((p.sports || []).filter(x => x.k !== 'hotworx').length === 1 ? 'a ' + E.SPORTBYK[(p.sports || []).find(x => x.k !== 'hotworx').k].name.toLowerCase() + ' session' : 'a sport or class')}</button>` : '';
+    const hasSport = (p.sports || []).some(x => x.k !== 'hotworx');
+    const spBtn = `<button class="btn block ghost" style="margin-top:8px" data-act="sp-open">${ICON.walk} Log cardio${hasSport ? ' or a sport' : ''}</button>`;
     inner += hxBtn + spBtn;
     session = `<div class="card"><div class="card-h"><div><div class="eyebrow">Today's workout · week ${((wk - 1) % (prog.blockWeeks + 1)) + 1}${plan.deload ? ' · easy week' : ''}</div><div class="h2" style="margin-top:2px">${plan.type === 'train' ? esc(plan.dayName) : plan.type === 'recovery' ? 'Recovery walk' : 'Rest'}</div></div>${plan.type === 'train' ? `<span class="pill">${plan.minutesEst} min</span>` : ''}</div>
       <div class="stack" style="gap:8px">${locSeg}${plan.type !== 'rest' ? minSeg : ''}</div>${inner}</div>`;
@@ -115,9 +116,20 @@ function greeting() { const h = new Date().getHours(); return h < 12 ? 'Morning'
 function weeklyReviewDue() { const last = nstate().lastReview || S.profile.created || today(); return E.daysBetween(last, today()) >= 7; }
 
 /* ---------------- CHECK-IN SHEET ---------------- */
+function weighInNote() {
+  const n = weights().filter(w => w.date >= E.addDays(today(), -6)).length;
+  return `This week: ${n} of 7 mornings.`;
+}
+function bfTile() {
+  const rows = Object.values(S.days).filter(d => +d.bf > 0).map(d => ({ date: d.date, bf: +d.bf })).sort((a, b) => a.date < b.date ? -1 : 1);
+  if (!rows.length) return S.profile.bf ? `<div class="tile"><div class="k">Body fat</div><div class="v num">${fmt(S.profile.bf, 1)}<span class="small muted">%</span></div><div class="tiny muted">from setup</div></div>` : '';
+  const last = rows[rows.length - 1], first = rows[0];
+  const ch = last.bf - first.bf;
+  return `<div class="tile"><div class="k">Body fat</div><div class="v num">${fmt(last.bf, 1)}<span class="small muted">%</span></div><div class="tiny" style="color:${rows.length < 2 ? 'var(--ink3)' : ch <= 0 ? 'var(--good)' : 'var(--warn)'}">${rows.length < 2 ? esc(prettyDate(last.date, { month: 'short', day: 'numeric' })) : `${ch > 0 ? '+' : ''}${fmt(ch, 1)} since ${esc(prettyDate(first.date, { month: 'short', day: 'numeric' }))}`}</div></div>`;
+}
 function sheetCheckin() {
   const d = day(today()); const c = d.checkin || { sleepHrs: d.wear?.sleepHrs || S.profile.sleepHrs || 7, sleepQ: 3, energy: 3, stress: S.profile.stress || 3, soreness: 2, soreAreas: [] };
-  S.ui.ci = S.ui.ci || { ...c, weight: d.weight || '' , steps: c.steps || '' };
+  S.ui.ci = S.ui.ci || { ...c, weight: d.weight || '', bf: d.bf || '', steps: c.steps || '' };
   const ci = S.ui.ci;
   const sc = (f, lo, hi) => `<div class="scale">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-act="ci-set" data-f="${f}" data-v="${n}" aria-pressed="${+ci[f] === n}">${n}</button>`).join('')}</div><div class="row between tiny muted" style="margin-top:3px"><span>${lo}</span><span>${hi}</span></div>`;
   return `<div class="grab"></div><div class="stack">
@@ -128,8 +140,10 @@ function sheetCheckin() {
     <div class="f">Stress${sc('stress', 'Calm', 'Stretched thin')}</div>
     <div class="f">Overall soreness${sc('soreness', 'None', 'Very sore')}</div>
     <div class="f">Anything sore?<div class="chips">${Object.entries(E.MUSCLES).filter(([k]) => !['frontdelts', 'abs'].includes(k)).map(([k, v]) => `<button type="button" class="chip" data-act="ci-sore" data-v="${k}" aria-pressed="${(ci.soreAreas || []).includes(k)}">${v}</button>`).join('')}</div></div>
-    <div class="fields"><label class="f">Bodyweight (lb)<input class="inp" id="ci-weight" data-ci="weight" inputmode="decimal" value="${esc(ci.weight)}" placeholder="optional"></label><label class="f">Steps yesterday<input class="inp" id="ci-steps" data-ci="steps" inputmode="numeric" value="${esc(ci.steps)}" placeholder="optional"></label></div>
-    <p class="tiny muted">Weigh in the morning after the bathroom. The trend line smooths daily water swings, so single readings never move your targets.</p>
+    <div class="fields"><label class="f">Bodyweight (lb)<input class="inp" id="ci-weight" data-ci="weight" inputmode="decimal" value="${esc(ci.weight)}" placeholder="every morning"></label><label class="f">Body fat %<input class="inp" id="ci-bf" data-ci="bf" inputmode="decimal" value="${esc(ci.bf)}" placeholder="when you measure"></label></div>
+    <label class="f">Steps yesterday<input class="inp" id="ci-steps" data-ci="steps" inputmode="numeric" value="${esc(ci.steps)}" placeholder="optional"></label>
+    <p class="tiny muted">Weigh in every morning after the bathroom, before eating or drinking. Spotter averages the week, so one high or low day never moves your targets, but without weigh-ins your calories can't adjust. ${weighInNote()}</p>
+    <p class="tiny muted">Body fat is optional. Enter it whenever you measure (smart scale, scan or calipers) and your protein and calories update to match. Use the same method each time.</p>
     <button class="btn primary block" data-act="ci-save">Save check-in</button></div>`;
 }
 
@@ -361,6 +375,7 @@ function viewProgress() {
   return `<div class="stack"><div style="padding-top:6px"><div class="eyebrow">Last 60 days</div><h1 class="h-display h1" style="margin-top:4px">Progress</h1></div>${photosCard()}
     <div class="tiles">
       <div class="tile"><div class="k">Average weight</div><div class="v num">${lastT ? fmt(lastT, 1) : '–'}<span class="small muted"> lb</span></div></div>
+      ${bfTile()}
       <div class="tile"><div class="k">7-day change</div><div class="v num" style="color:${rate == null ? 'var(--ink)' : (p.goal === 'fatloss' ? (rate < 0 ? 'var(--good)' : 'var(--warn)') : 'var(--ink)')}">${rate == null ? '–' : (rate > 0 ? '+' : '') + fmt(rate, 2)}</div><div class="tiny muted">${rateGoal ? 'target ' + fmt(rateGoal, 1) + '/wk' : ''}</div></div>
       <div class="tile"><div class="k">Avg intake (7d)</div><div class="v num">${avgK ? fmt(avgK) : '–'}</div><div class="tiny muted">${logged}/7 days logged</div></div>
       <div class="tile"><div class="k">Avg protein</div><div class="v num mp">${prot7.length ? fmt(E.avg(prot7)) : '–'}<span class="small muted"> g</span></div><div class="tiny muted">target ${T.base.protein} g</div></div>
@@ -507,13 +522,13 @@ function sheetPlates() {
 
 function sheetSport() {
   const p = S.profile; const mine = (p.sports || []).filter(x => x.k !== 'hotworx').map(x => E.SPORTBYK[x.k]).filter(Boolean);
-  const f = S.ui.sp = S.ui.sp || {}; if (!f.k) f.k = (mine[0] || E.SPORTS[1]).k;
+  const f = S.ui.sp = S.ui.sp || {}; if (!f.k) f.k = 'c_walk';
   const sp = E.SPORTBYK[f.k]; if (!f.min) f.min = sp.min; if (!f.level) f.level = 'medium';
   const logged = (day(today()).workouts || []).filter(w => w.kind === 'sport');
-  const list = mine.length ? mine : E.SPORTS.filter(x => x.k !== 'hotworx');
-  return `<div class="grab"></div><div class="stack"><div class="h2">Log a session</div>
+  const list = E.CARDIO.concat(mine.filter(x => !E.CARDIO.some(c => c.k === x.k)));
+  return `<div class="grab"></div><div class="stack"><div class="h2">Log cardio${mine.length ? ' or a sport' : ''}</div>
     <div class="chips">${list.map(x => `<button class="chip" data-act="sp-set" data-f="k" data-v="${x.k}" aria-pressed="${f.k === x.k}">${esc(x.name)}</button>`).join('')}</div>
-    ${q('How long?', '', `<div class="seg">${[30, 45, 60, 90, 120].map(m => `<button type="button" data-act="sp-set" data-f="min" data-v="${m}" aria-pressed="${+f.min === m}">${m} min</button>`).join('')}</div>`)}
+    ${q('How long?', '', `<div class="seg">${[15, 20, 30, 45, 60, 90].map(m => `<button type="button" data-act="sp-set" data-f="min" data-v="${m}" aria-pressed="${+f.min === m}">${m} min</button>`).join('')}</div>`)}
     ${q('How hard was it?', 'Hard sessions make the next lifting day a little lighter.', `<div class="seg">${[['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([k, l]) => `<button type="button" data-act="sp-set" data-f="level" data-v="${k}" aria-pressed="${f.level === k}">${l}</button>`).join('')}</div>`)}
     <button class="btn block primary" data-act="sp-log">Log ${esc(sp.name.toLowerCase())}</button>
     ${logged.length ? `<p class="small">Logged today: ${logged.map(w => esc(w.dayName) + ' ' + w.minutes + ' min').join(', ')}</p>` : ''}

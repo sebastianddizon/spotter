@@ -365,7 +365,18 @@ const SPORTS = [
   { k: 'swim', name: 'Swimming', min: 45, kpm: 8, legs: false, boost: ['reardelts', 'lats'] },
   { k: 'yoga', name: 'Yoga or Pilates', min: 60, kpm: 3.5, legs: false, boost: [], easy: true }
 ];
-const SPORTBYK = Object.fromEntries(SPORTS.map(s => [s.k, s]));
+/* Plain cardio anyone can log (not shown as a sport choice during setup). */
+const CARDIO = [
+  { k: 'c_walk', name: 'Walk', min: 30, kpm: 4.5, legs: false, boost: [] },
+  { k: 'c_run', name: 'Run', min: 30, kpm: 11, legs: true, boost: [] },
+  { k: 'c_bike', name: 'Bike', min: 30, kpm: 8, legs: true, boost: [] },
+  { k: 'c_stairs', name: 'Stairs', min: 20, kpm: 9, legs: true, boost: [] },
+  { k: 'c_row', name: 'Rower', min: 20, kpm: 9, legs: true, boost: [] },
+  { k: 'c_ell', name: 'Elliptical', min: 30, kpm: 8, legs: true, boost: [] },
+  { k: 'c_swim', name: 'Swim', min: 30, kpm: 8, legs: false, boost: [] },
+  { k: 'c_other', name: 'Other cardio', min: 30, kpm: 7, legs: false, boost: [] }
+];
+const SPORTBYK = Object.fromEntries([...SPORTS, ...CARDIO].map(s => [s.k, s]));
 
 /* HOTWORX infrared sauna sessions (logged, not programmed). HIIT ones count toward weekly conditioning. */
 const HOTWORX = [
@@ -565,7 +576,11 @@ function weeklyReview(profile, targets, intakeByDate, weights, today, state = {}
       if (rate - target > lb * 0.0025) { out.change = -150; out.notes.push(`Your weight is dropping slower than planned (${Math.abs(rate).toFixed(1)} lb a week, goal ${Math.abs(target).toFixed(1)}). Eat 150 fewer calories a day.`); }
       else if (target - rate > lb * 0.0025) { out.change = 150; out.notes.push(`You are losing faster than planned (${Math.abs(rate).toFixed(1)} lb a week). Eat 150 more calories a day so you keep your muscle and energy.`); }
       else out.notes.push('You are right on pace. No change.');
-    } else out.notes.push(ad.reason + ' Targets hold until then.');
+    } else {
+      const wIns = tr.filter(x => x.date >= addDays(today, -21)).length;
+      if (wIns < 6) out.notes.push(`Only ${wIns} weigh-in${wIns === 1 ? '' : 's'} in the last 3 weeks, so your calories stay the same this week. Weigh in every morning after the bathroom; Spotter averages the week, and that average is what adjusts your calories.`);
+      else out.notes.push(ad.reason + ' Targets hold until then.');
+    }
   }
 
   if (profile.goal === 'fatloss') {
@@ -1048,7 +1063,7 @@ function dailyPlan(ctx) {
   }
   if (soreSet.size) adj.push(`Sore today: ${[...soreSet].map(m => MUSCLES[m] || m).join(', ')}. A little less work for those.`);
 
-  if (minutes < 50) {
+  if (minutes < 90) {
     // antagonist / non-competing supersets, 60 s between exercises. Never on the main lift.
     const PUSH = new Set(['chest', 'frontdelts', 'triceps', 'sidedelts']), PULL = new Set(['lats', 'upperback', 'reardelts', 'biceps']);
     const grp = m => PUSH.has(m) ? 'push' : PULL.has(m) ? 'pull' : 'legs';
@@ -1074,6 +1089,37 @@ function dailyPlan(ctx) {
     if (cand) cand.sets--; else if (items.length > 1 && !items[items.length - 1].main) items.pop(); else break;
   }
   if (est() > minutes && items.length > 3) { items.splice(items.length - 1, 1); }
+  // more time than the plan was built for: add real work instead of handing back the same session
+  const baseMin = profile.sessionMin || 45;
+  if (minutes >= baseMin + 10 && !dl.deload && r.band !== 'red') {
+    const before = { sets: sum(items.map(i => i.sets)), n: items.length };
+    const pri = new Set(profile.priority || []);
+    const capOf = i => i.ex.type === 'compound' ? 4 : 5;
+    const addSets = (cap) => { let g = 0; while (minutes - est() > 3 && g++ < 60) {
+      const c = items.filter(i => !i.main && !i.prehab && i.sets < Math.min(cap || 9, capOf(i))).sort((a, b) => (pri.has(b.muscle) ? 1 : 0) - (pri.has(a.muscle) ? 1 : 0) || a.sets - b.sets)[0];
+      if (!c) break; c.sets++; } };
+    addSets(3);
+    // still room: one more exercise for the biggest weekly target not in today's list
+    const tg = program.volume?.sets || {};
+    let extraG = 0;
+    while (minutes - est() >= 9 && extraG++ < 2) {
+      const have = new Set(items.map(i => i.muscle));
+      const m = Object.keys(tg).filter(k => tg[k] > 0 && !have.has(k) && !soreSet.has(k) && !(mod.legLight && LEG_MUSCLES.includes(k))).sort((a, b) => (pri.has(b) ? 1 : 0) - (pri.has(a) ? 1 : 0) || tg[b] - tg[a])[0];
+      if (!m) break;
+      const ex = exerciseFor({ key: 'extra-' + m, muscle: m }, libOf(loc), loc === 'hotel' ? { ...profile, homeEquip: equipFor(profile, loc) } : profile, used);
+      if (!ex) break; used.add(ex.id);
+      const isComp = ex.type === 'compound', repT = isComp ? Math.round((ex.rr[0] + ex.rr[1]) / 2) : ex.rr[0] + 2, rir = clamp((isComp ? 2 : 1) + rirAdd, 0, 4);
+      const sug = suggestLoad(ex, setsHistory[ex.id], repT, rir, mod);
+      const at = items.findIndex(i => i.prehab); const it = { slotKey: 'extra-' + m, muscle: m, ex, sets: 3, reps: `${ex.rr[0]}-${ex.rr[1]}`, repTarget: repT, rir, load: sug.load, basis: sug.basis, rest: isComp ? 150 : 90, extra: true };
+      if (at >= 0) items.splice(at, 0, it); else items.push(it);
+      addSets(3);
+    }
+    addSets();
+    while (est() > minutes) { const c = [...items].reverse().find(i => (i.extra || !i.main) && i.sets > 2); if (!c) break; c.sets--; }
+    const addS = sum(items.map(i => i.sets)) - before.sets, addN = items.length - before.n;
+    const ex2 = items.filter(i => i.extra).map(i => MUSCLES[i.muscle].toLowerCase());
+    adj.push(`You have ${minutes} minutes today instead of your usual ${baseMin}, so the workout is bigger: ${items.length} exercises and ${sum(items.map(i => i.sets))} sets${ex2.length ? `, including extra work for ${ex2.join(' and ')}` : ''}.`);
+  }
   // supersets on P1: pair non-competing muscles to save rest
   adj.push('Warm up for 5 minutes first: arm circles, leg swings and a few bodyweight squats. Then do 1 or 2 light practice sets of your first exercise.');
   if (loc === 'hotworx') adj.push(`At HOTWORX: do these weights in the FX Zone first, then a 15-minute sauna session like Hot Cycle or Hot Blast if you have time. Drink water before and after.`);
@@ -1104,7 +1150,7 @@ function nutritionNotes(target, yTotals, plan) {
 
 const api = { KG, MUSCLES, LEG_MUSCLES, EX, EXBYID, isoDate, addDays, daysBetween, weekdayOf, clamp, round, sum, avg,
   estimateTDEE, calcTargets, leanCategory, lossRatePct, trendSeries, adaptiveTDEE, weeklyReview,
-  PLACES, HOME_EQUIP, SPORTS, SPORTBYK, placeOf, unitOf, unitText, libOf, equipFor, platesFor, isBarbell, bestOf,
+  PLACES, HOME_EQUIP, SPORTS, CARDIO, SPORTBYK, placeOf, unitOf, unitText, libOf, equipFor, platesFor, isBarbell, bestOf,
   weeklySetTargets, splitFor, buildProgram, exerciseFor, e1rm, loadFor, suggestLoad, p1Display,
   readiness, nextDayIndex, deloadCheck, dailyPlan, dayTotals, nutritionNotes, weekNumber,
   HOTWORX, PROTOCOLS, rapidCaps, carbcycleEligible, dayTargets, dietBreakLimitWeeks, nextSetLoad, STRPLAN, strRound, strBase, strSession, strBackoff, strNextTop };

@@ -318,7 +318,7 @@ document.addEventListener('click', async (ev) => {
     case 'ci-set': captureCi(); S.ui.ci[el.dataset.f] = +v; render(); break;
     case 'ci-step': captureCi(); S.ui.ci[el.dataset.f] = Math.max(0, Math.min(14, (+S.ui.ci[el.dataset.f] || 0) + +v)); render(); break;
     case 'ci-sore': { captureCi(); const arr = S.ui.ci.soreAreas = S.ui.ci.soreAreas || []; const i = arr.indexOf(v); i >= 0 ? arr.splice(i, 1) : arr.push(v); render(); break; }
-    case 'ci-save': { captureCi(); const c = S.ui.ci, d = day(today()); d.checkin = { sleepHrs: +c.sleepHrs, sleepQ: +c.sleepQ, energy: +c.energy, stress: +c.stress, soreness: +c.soreness, soreAreas: c.soreAreas || [], steps: c.steps ? +c.steps : null }; if (c.weight) d.weight = +c.weight; saveDay(today()); S.brief = null; closeSheet(); toast('Check-in saved'); break; }
+    case 'ci-save': { captureCi(); const c = S.ui.ci, d = day(today()); d.checkin = { sleepHrs: +c.sleepHrs, sleepQ: +c.sleepQ, energy: +c.energy, stress: +c.stress, soreness: +c.soreness, soreAreas: c.soreAreas || [], steps: c.steps ? +c.steps : null }; if (c.weight) d.weight = +c.weight; if (+c.bf > 2 && +c.bf < 70) { d.bf = +c.bf; S.profile.bf = +c.bf; S.profile.bfUpdated = today(); saveProfile(); } saveDay(today()); S.brief = null; closeSheet(); toast('Check-in saved'); break; }
     // plan
     case 'plan-loc': { const d = day(today()); d.plan = { ...(d.plan || {}), loc: v }; saveDay(today()); S.brief = null; render(); break; }
     case 'plan-min': { const d = day(today()); d.plan = { ...(d.plan || {}), min: +v }; saveDay(today()); render(); break; }

@@ -756,7 +756,18 @@ const SPORTS = [
   { k: 'swim', name: 'Swimming', min: 45, kpm: 8, legs: false, boost: ['reardelts', 'lats'] },
   { k: 'yoga', name: 'Yoga or Pilates', min: 60, kpm: 3.5, legs: false, boost: [], easy: true }
 ];
-const SPORTBYK = Object.fromEntries(SPORTS.map(s => [s.k, s]));
+/* Plain cardio anyone can log (not shown as a sport choice during setup). */
+const CARDIO = [
+  { k: 'c_walk', name: 'Walk', min: 30, kpm: 4.5, legs: false, boost: [] },
+  { k: 'c_run', name: 'Run', min: 30, kpm: 11, legs: true, boost: [] },
+  { k: 'c_bike', name: 'Bike', min: 30, kpm: 8, legs: true, boost: [] },
+  { k: 'c_stairs', name: 'Stairs', min: 20, kpm: 9, legs: true, boost: [] },
+  { k: 'c_row', name: 'Rower', min: 20, kpm: 9, legs: true, boost: [] },
+  { k: 'c_ell', name: 'Elliptical', min: 30, kpm: 8, legs: true, boost: [] },
+  { k: 'c_swim', name: 'Swim', min: 30, kpm: 8, legs: false, boost: [] },
+  { k: 'c_other', name: 'Other cardio', min: 30, kpm: 7, legs: false, boost: [] }
+];
+const SPORTBYK = Object.fromEntries([...SPORTS, ...CARDIO].map(s => [s.k, s]));
 
 /* HOTWORX infrared sauna sessions (logged, not programmed). HIIT ones count toward weekly conditioning. */
 const HOTWORX = [
@@ -956,7 +967,11 @@ function weeklyReview(profile, targets, intakeByDate, weights, today, state = {}
       if (rate - target > lb * 0.0025) { out.change = -150; out.notes.push(`Your weight is dropping slower than planned (${Math.abs(rate).toFixed(1)} lb a week, goal ${Math.abs(target).toFixed(1)}). Eat 150 fewer calories a day.`); }
       else if (target - rate > lb * 0.0025) { out.change = 150; out.notes.push(`You are losing faster than planned (${Math.abs(rate).toFixed(1)} lb a week). Eat 150 more calories a day so you keep your muscle and energy.`); }
       else out.notes.push('You are right on pace. No change.');
-    } else out.notes.push(ad.reason + ' Targets hold until then.');
+    } else {
+      const wIns = tr.filter(x => x.date >= addDays(today, -21)).length;
+      if (wIns < 6) out.notes.push(`Only ${wIns} weigh-in${wIns === 1 ? '' : 's'} in the last 3 weeks, so your calories stay the same this week. Weigh in every morning after the bathroom; Spotter averages the week, and that average is what adjusts your calories.`);
+      else out.notes.push(ad.reason + ' Targets hold until then.');
+    }
   }
 
   if (profile.goal === 'fatloss') {
@@ -1439,7 +1454,7 @@ function dailyPlan(ctx) {
   }
   if (soreSet.size) adj.push(`Sore today: ${[...soreSet].map(m => MUSCLES[m] || m).join(', ')}. A little less work for those.`);
 
-  if (minutes < 50) {
+  if (minutes < 90) {
     // antagonist / non-competing supersets, 60 s between exercises. Never on the main lift.
     const PUSH = new Set(['chest', 'frontdelts', 'triceps', 'sidedelts']), PULL = new Set(['lats', 'upperback', 'reardelts', 'biceps']);
     const grp = m => PUSH.has(m) ? 'push' : PULL.has(m) ? 'pull' : 'legs';
@@ -1465,6 +1480,37 @@ function dailyPlan(ctx) {
     if (cand) cand.sets--; else if (items.length > 1 && !items[items.length - 1].main) items.pop(); else break;
   }
   if (est() > minutes && items.length > 3) { items.splice(items.length - 1, 1); }
+  // more time than the plan was built for: add real work instead of handing back the same session
+  const baseMin = profile.sessionMin || 45;
+  if (minutes >= baseMin + 10 && !dl.deload && r.band !== 'red') {
+    const before = { sets: sum(items.map(i => i.sets)), n: items.length };
+    const pri = new Set(profile.priority || []);
+    const capOf = i => i.ex.type === 'compound' ? 4 : 5;
+    const addSets = (cap) => { let g = 0; while (minutes - est() > 3 && g++ < 60) {
+      const c = items.filter(i => !i.main && !i.prehab && i.sets < Math.min(cap || 9, capOf(i))).sort((a, b) => (pri.has(b.muscle) ? 1 : 0) - (pri.has(a.muscle) ? 1 : 0) || a.sets - b.sets)[0];
+      if (!c) break; c.sets++; } };
+    addSets(3);
+    // still room: one more exercise for the biggest weekly target not in today's list
+    const tg = program.volume?.sets || {};
+    let extraG = 0;
+    while (minutes - est() >= 9 && extraG++ < 2) {
+      const have = new Set(items.map(i => i.muscle));
+      const m = Object.keys(tg).filter(k => tg[k] > 0 && !have.has(k) && !soreSet.has(k) && !(mod.legLight && LEG_MUSCLES.includes(k))).sort((a, b) => (pri.has(b) ? 1 : 0) - (pri.has(a) ? 1 : 0) || tg[b] - tg[a])[0];
+      if (!m) break;
+      const ex = exerciseFor({ key: 'extra-' + m, muscle: m }, libOf(loc), loc === 'hotel' ? { ...profile, homeEquip: equipFor(profile, loc) } : profile, used);
+      if (!ex) break; used.add(ex.id);
+      const isComp = ex.type === 'compound', repT = isComp ? Math.round((ex.rr[0] + ex.rr[1]) / 2) : ex.rr[0] + 2, rir = clamp((isComp ? 2 : 1) + rirAdd, 0, 4);
+      const sug = suggestLoad(ex, setsHistory[ex.id], repT, rir, mod);
+      const at = items.findIndex(i => i.prehab); const it = { slotKey: 'extra-' + m, muscle: m, ex, sets: 3, reps: `${ex.rr[0]}-${ex.rr[1]}`, repTarget: repT, rir, load: sug.load, basis: sug.basis, rest: isComp ? 150 : 90, extra: true };
+      if (at >= 0) items.splice(at, 0, it); else items.push(it);
+      addSets(3);
+    }
+    addSets();
+    while (est() > minutes) { const c = [...items].reverse().find(i => (i.extra || !i.main) && i.sets > 2); if (!c) break; c.sets--; }
+    const addS = sum(items.map(i => i.sets)) - before.sets, addN = items.length - before.n;
+    const ex2 = items.filter(i => i.extra).map(i => MUSCLES[i.muscle].toLowerCase());
+    adj.push(`You have ${minutes} minutes today instead of your usual ${baseMin}, so the workout is bigger: ${items.length} exercises and ${sum(items.map(i => i.sets))} sets${ex2.length ? `, including extra work for ${ex2.join(' and ')}` : ''}.`);
+  }
   // supersets on P1: pair non-competing muscles to save rest
   adj.push('Warm up for 5 minutes first: arm circles, leg swings and a few bodyweight squats. Then do 1 or 2 light practice sets of your first exercise.');
   if (loc === 'hotworx') adj.push(`At HOTWORX: do these weights in the FX Zone first, then a 15-minute sauna session like Hot Cycle or Hot Blast if you have time. Drink water before and after.`);
@@ -1495,7 +1541,7 @@ function nutritionNotes(target, yTotals, plan) {
 
 const api = { KG, MUSCLES, LEG_MUSCLES, EX, EXBYID, isoDate, addDays, daysBetween, weekdayOf, clamp, round, sum, avg,
   estimateTDEE, calcTargets, leanCategory, lossRatePct, trendSeries, adaptiveTDEE, weeklyReview,
-  PLACES, HOME_EQUIP, SPORTS, SPORTBYK, placeOf, unitOf, unitText, libOf, equipFor, platesFor, isBarbell, bestOf,
+  PLACES, HOME_EQUIP, SPORTS, CARDIO, SPORTBYK, placeOf, unitOf, unitText, libOf, equipFor, platesFor, isBarbell, bestOf,
   weeklySetTargets, splitFor, buildProgram, exerciseFor, e1rm, loadFor, suggestLoad, p1Display,
   readiness, nextDayIndex, deloadCheck, dailyPlan, dayTotals, nutritionNotes, weekNumber,
   HOTWORX, PROTOCOLS, rapidCaps, carbcycleEligible, dayTargets, dietBreakLimitWeeks, nextSetLoad, STRPLAN, strRound, strBase, strSession, strBackoff, strNextTop };
@@ -2312,10 +2358,11 @@ function viewToday() {
     } else if (plan.type === 'recovery') {
       inner = `<p style="margin-top:8px">25 to 40 minutes of easy walking on the treadmill, then 10 minutes of mobility. ${esc(prog.days[plan.dayIndex].name)} moves to your next session.</p><button class="btn block" style="margin-top:10px" data-act="plan-choice" data-v="">Train light instead</button>`;
     } else {
-      inner = `<p style="margin-top:8px" class="muted">Rest day. Steps and protein still count. Your next session is ${esc(prog.days[E.nextDayIndex(prog, allWorkouts(), t)].name)}.</p>${plan.condWeek < 2 ? `<button class="btn block" style="margin-top:10px" data-act="log-cond">${ICON.walk} Log 20 min conditioning</button>` : ''}`;
+      inner = `<p style="margin-top:8px" class="muted">Rest day. Steps and protein still count. Your next session is ${esc(prog.days[E.nextDayIndex(prog, allWorkouts(), t)].name)}.</p>`;
     }
     const hxBtn = (p.locations || []).includes('hotworx') ? `<button class="btn block ghost" style="margin-top:8px" data-act="hx-open">${ICON.bolt} Log a HOTWORX sauna session</button>` : '';
-    const spBtn = (p.sports || []).some(x => x.k !== 'hotworx') ? `<button class="btn block ghost" style="margin-top:8px" data-act="sp-open">${ICON.bolt} Log ${esc((p.sports || []).filter(x => x.k !== 'hotworx').length === 1 ? 'a ' + E.SPORTBYK[(p.sports || []).find(x => x.k !== 'hotworx').k].name.toLowerCase() + ' session' : 'a sport or class')}</button>` : '';
+    const hasSport = (p.sports || []).some(x => x.k !== 'hotworx');
+    const spBtn = `<button class="btn block ghost" style="margin-top:8px" data-act="sp-open">${ICON.walk} Log cardio${hasSport ? ' or a sport' : ''}</button>`;
     inner += hxBtn + spBtn;
     session = `<div class="card"><div class="card-h"><div><div class="eyebrow">Today's workout · week ${((wk - 1) % (prog.blockWeeks + 1)) + 1}${plan.deload ? ' · easy week' : ''}</div><div class="h2" style="margin-top:2px">${plan.type === 'train' ? esc(plan.dayName) : plan.type === 'recovery' ? 'Recovery walk' : 'Rest'}</div></div>${plan.type === 'train' ? `<span class="pill">${plan.minutesEst} min</span>` : ''}</div>
       <div class="stack" style="gap:8px">${locSeg}${plan.type !== 'rest' ? minSeg : ''}</div>${inner}</div>`;
@@ -2348,9 +2395,20 @@ function greeting() { const h = new Date().getHours(); return h < 12 ? 'Morning'
 function weeklyReviewDue() { const last = nstate().lastReview || S.profile.created || today(); return E.daysBetween(last, today()) >= 7; }
 
 /* ---------------- CHECK-IN SHEET ---------------- */
+function weighInNote() {
+  const n = weights().filter(w => w.date >= E.addDays(today(), -6)).length;
+  return `This week: ${n} of 7 mornings.`;
+}
+function bfTile() {
+  const rows = Object.values(S.days).filter(d => +d.bf > 0).map(d => ({ date: d.date, bf: +d.bf })).sort((a, b) => a.date < b.date ? -1 : 1);
+  if (!rows.length) return S.profile.bf ? `<div class="tile"><div class="k">Body fat</div><div class="v num">${fmt(S.profile.bf, 1)}<span class="small muted">%</span></div><div class="tiny muted">from setup</div></div>` : '';
+  const last = rows[rows.length - 1], first = rows[0];
+  const ch = last.bf - first.bf;
+  return `<div class="tile"><div class="k">Body fat</div><div class="v num">${fmt(last.bf, 1)}<span class="small muted">%</span></div><div class="tiny" style="color:${rows.length < 2 ? 'var(--ink3)' : ch <= 0 ? 'var(--good)' : 'var(--warn)'}">${rows.length < 2 ? esc(prettyDate(last.date, { month: 'short', day: 'numeric' })) : `${ch > 0 ? '+' : ''}${fmt(ch, 1)} since ${esc(prettyDate(first.date, { month: 'short', day: 'numeric' }))}`}</div></div>`;
+}
 function sheetCheckin() {
   const d = day(today()); const c = d.checkin || { sleepHrs: d.wear?.sleepHrs || S.profile.sleepHrs || 7, sleepQ: 3, energy: 3, stress: S.profile.stress || 3, soreness: 2, soreAreas: [] };
-  S.ui.ci = S.ui.ci || { ...c, weight: d.weight || '' , steps: c.steps || '' };
+  S.ui.ci = S.ui.ci || { ...c, weight: d.weight || '', bf: d.bf || '', steps: c.steps || '' };
   const ci = S.ui.ci;
   const sc = (f, lo, hi) => `<div class="scale">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-act="ci-set" data-f="${f}" data-v="${n}" aria-pressed="${+ci[f] === n}">${n}</button>`).join('')}</div><div class="row between tiny muted" style="margin-top:3px"><span>${lo}</span><span>${hi}</span></div>`;
   return `<div class="grab"></div><div class="stack">
@@ -2361,8 +2419,10 @@ function sheetCheckin() {
     <div class="f">Stress${sc('stress', 'Calm', 'Stretched thin')}</div>
     <div class="f">Overall soreness${sc('soreness', 'None', 'Very sore')}</div>
     <div class="f">Anything sore?<div class="chips">${Object.entries(E.MUSCLES).filter(([k]) => !['frontdelts', 'abs'].includes(k)).map(([k, v]) => `<button type="button" class="chip" data-act="ci-sore" data-v="${k}" aria-pressed="${(ci.soreAreas || []).includes(k)}">${v}</button>`).join('')}</div></div>
-    <div class="fields"><label class="f">Bodyweight (lb)<input class="inp" id="ci-weight" data-ci="weight" inputmode="decimal" value="${esc(ci.weight)}" placeholder="optional"></label><label class="f">Steps yesterday<input class="inp" id="ci-steps" data-ci="steps" inputmode="numeric" value="${esc(ci.steps)}" placeholder="optional"></label></div>
-    <p class="tiny muted">Weigh in the morning after the bathroom. The trend line smooths daily water swings, so single readings never move your targets.</p>
+    <div class="fields"><label class="f">Bodyweight (lb)<input class="inp" id="ci-weight" data-ci="weight" inputmode="decimal" value="${esc(ci.weight)}" placeholder="every morning"></label><label class="f">Body fat %<input class="inp" id="ci-bf" data-ci="bf" inputmode="decimal" value="${esc(ci.bf)}" placeholder="when you measure"></label></div>
+    <label class="f">Steps yesterday<input class="inp" id="ci-steps" data-ci="steps" inputmode="numeric" value="${esc(ci.steps)}" placeholder="optional"></label>
+    <p class="tiny muted">Weigh in every morning after the bathroom, before eating or drinking. Spotter averages the week, so one high or low day never moves your targets, but without weigh-ins your calories can't adjust. ${weighInNote()}</p>
+    <p class="tiny muted">Body fat is optional. Enter it whenever you measure (smart scale, scan or calipers) and your protein and calories update to match. Use the same method each time.</p>
     <button class="btn primary block" data-act="ci-save">Save check-in</button></div>`;
 }
 
@@ -2594,6 +2654,7 @@ function viewProgress() {
   return `<div class="stack"><div style="padding-top:6px"><div class="eyebrow">Last 60 days</div><h1 class="h-display h1" style="margin-top:4px">Progress</h1></div>${photosCard()}
     <div class="tiles">
       <div class="tile"><div class="k">Average weight</div><div class="v num">${lastT ? fmt(lastT, 1) : '–'}<span class="small muted"> lb</span></div></div>
+      ${bfTile()}
       <div class="tile"><div class="k">7-day change</div><div class="v num" style="color:${rate == null ? 'var(--ink)' : (p.goal === 'fatloss' ? (rate < 0 ? 'var(--good)' : 'var(--warn)') : 'var(--ink)')}">${rate == null ? '–' : (rate > 0 ? '+' : '') + fmt(rate, 2)}</div><div class="tiny muted">${rateGoal ? 'target ' + fmt(rateGoal, 1) + '/wk' : ''}</div></div>
       <div class="tile"><div class="k">Avg intake (7d)</div><div class="v num">${avgK ? fmt(avgK) : '–'}</div><div class="tiny muted">${logged}/7 days logged</div></div>
       <div class="tile"><div class="k">Avg protein</div><div class="v num mp">${prot7.length ? fmt(E.avg(prot7)) : '–'}<span class="small muted"> g</span></div><div class="tiny muted">target ${T.base.protein} g</div></div>
@@ -2740,13 +2801,13 @@ function sheetPlates() {
 
 function sheetSport() {
   const p = S.profile; const mine = (p.sports || []).filter(x => x.k !== 'hotworx').map(x => E.SPORTBYK[x.k]).filter(Boolean);
-  const f = S.ui.sp = S.ui.sp || {}; if (!f.k) f.k = (mine[0] || E.SPORTS[1]).k;
+  const f = S.ui.sp = S.ui.sp || {}; if (!f.k) f.k = 'c_walk';
   const sp = E.SPORTBYK[f.k]; if (!f.min) f.min = sp.min; if (!f.level) f.level = 'medium';
   const logged = (day(today()).workouts || []).filter(w => w.kind === 'sport');
-  const list = mine.length ? mine : E.SPORTS.filter(x => x.k !== 'hotworx');
-  return `<div class="grab"></div><div class="stack"><div class="h2">Log a session</div>
+  const list = E.CARDIO.concat(mine.filter(x => !E.CARDIO.some(c => c.k === x.k)));
+  return `<div class="grab"></div><div class="stack"><div class="h2">Log cardio${mine.length ? ' or a sport' : ''}</div>
     <div class="chips">${list.map(x => `<button class="chip" data-act="sp-set" data-f="k" data-v="${x.k}" aria-pressed="${f.k === x.k}">${esc(x.name)}</button>`).join('')}</div>
-    ${q('How long?', '', `<div class="seg">${[30, 45, 60, 90, 120].map(m => `<button type="button" data-act="sp-set" data-f="min" data-v="${m}" aria-pressed="${+f.min === m}">${m} min</button>`).join('')}</div>`)}
+    ${q('How long?', '', `<div class="seg">${[15, 20, 30, 45, 60, 90].map(m => `<button type="button" data-act="sp-set" data-f="min" data-v="${m}" aria-pressed="${+f.min === m}">${m} min</button>`).join('')}</div>`)}
     ${q('How hard was it?', 'Hard sessions make the next lifting day a little lighter.', `<div class="seg">${[['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([k, l]) => `<button type="button" data-act="sp-set" data-f="level" data-v="${k}" aria-pressed="${f.level === k}">${l}</button>`).join('')}</div>`)}
     <button class="btn block primary" data-act="sp-log">Log ${esc(sp.name.toLowerCase())}</button>
     ${logged.length ? `<p class="small">Logged today: ${logged.map(w => esc(w.dayName) + ' ' + w.minutes + ' min').join(', ')}</p>` : ''}
@@ -3693,7 +3754,7 @@ document.addEventListener('click', async (ev) => {
     case 'ci-set': captureCi(); S.ui.ci[el.dataset.f] = +v; render(); break;
     case 'ci-step': captureCi(); S.ui.ci[el.dataset.f] = Math.max(0, Math.min(14, (+S.ui.ci[el.dataset.f] || 0) + +v)); render(); break;
     case 'ci-sore': { captureCi(); const arr = S.ui.ci.soreAreas = S.ui.ci.soreAreas || []; const i = arr.indexOf(v); i >= 0 ? arr.splice(i, 1) : arr.push(v); render(); break; }
-    case 'ci-save': { captureCi(); const c = S.ui.ci, d = day(today()); d.checkin = { sleepHrs: +c.sleepHrs, sleepQ: +c.sleepQ, energy: +c.energy, stress: +c.stress, soreness: +c.soreness, soreAreas: c.soreAreas || [], steps: c.steps ? +c.steps : null }; if (c.weight) d.weight = +c.weight; saveDay(today()); S.brief = null; closeSheet(); toast('Check-in saved'); break; }
+    case 'ci-save': { captureCi(); const c = S.ui.ci, d = day(today()); d.checkin = { sleepHrs: +c.sleepHrs, sleepQ: +c.sleepQ, energy: +c.energy, stress: +c.stress, soreness: +c.soreness, soreAreas: c.soreAreas || [], steps: c.steps ? +c.steps : null }; if (c.weight) d.weight = +c.weight; if (+c.bf > 2 && +c.bf < 70) { d.bf = +c.bf; S.profile.bf = +c.bf; S.profile.bfUpdated = today(); saveProfile(); } saveDay(today()); S.brief = null; closeSheet(); toast('Check-in saved'); break; }
     // plan
     case 'plan-loc': { const d = day(today()); d.plan = { ...(d.plan || {}), loc: v }; saveDay(today()); S.brief = null; render(); break; }
     case 'plan-min': { const d = day(today()); d.plan = { ...(d.plan || {}), min: +v }; saveDay(today()); render(); break; }
